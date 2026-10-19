@@ -579,13 +579,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </p>
           </div>
 
-          <div className="p-5 sm:p-6 rounded-2xl bg-card border border-border hover:border-rose-500/40 transition-colors shadow-sm">
-            <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-4">
+          <div className="p-5 sm:p-6 rounded-2xl bg-card border border-border hover:border-amber-500/40 transition-colors shadow-sm">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-4">
               <Zap className="w-5 h-5" />
             </div>
-            <h3 className="text-base font-bold text-foreground mb-2">Cloud Persistence</h3>
+            <h3 className="text-base font-bold text-foreground mb-2">Real-Time Cloud Sync</h3>
             <p className="text-xs text-slate-600 dark:text-muted-foreground leading-relaxed">
-              Connect to your Supabase cloud backend to automatically sync your architecture workspaces across all devices in real-time.
+              Auto-save and synchronize your architectural workspaces, database models, and team blueprints securely across all your devices with instant persistence.
             </p>
           </div>
         </div>

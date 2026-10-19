@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layers, Sparkles, Download, Plus, Moon, Sun, Table2, Box, LogIn, Cloud, User as UserIcon } from 'lucide-react';
+import { Layers, Sparkles, Download, Plus, Moon, Sun, Table2, Box, LogIn, Cloud, User as UserIcon, MessageSquare, ShieldCheck } from 'lucide-react';
 import { User } from '@supabase/supabase-js';
 
 interface HeaderProps {
@@ -17,6 +17,9 @@ interface HeaderProps {
   onToggleTheme: () => void;
   onToggleProjectsSidebar?: () => void;
   onNavigateToLanding?: () => void;
+  onOpenFeedback: () => void;
+  isAdmin?: boolean;
+  onOpenAdminHub?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -34,6 +37,9 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleTheme,
   onToggleProjectsSidebar,
   onNavigateToLanding,
+  onOpenFeedback,
+  isAdmin = false,
+  onOpenAdminHub,
 }) => {
   return (
     <header className="absolute top-4 left-4 right-4 z-50 flex items-center justify-between px-5 py-2.5 bg-card/85 backdrop-blur-md border border-border rounded-2xl shadow-xl transition-colors">
@@ -99,10 +105,36 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           onClick={onExportSQL}
           className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-muted hover:bg-muted/80 border border-border text-foreground font-medium text-xs transition-all active:scale-95 cursor-pointer"
+          title="Export production PostgreSQL DDL from current canvas"
         >
           <Download className="w-3.5 h-3.5 text-emerald-500" />
           <span className="hidden sm:inline">Export SQL</span>
         </button>
+
+        {/* Feedback / Bug Report Button (Only for Logged-In Users) */}
+        {currentUser && (
+          <button
+            onClick={onOpenFeedback}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-muted hover:bg-muted/80 border border-border text-foreground font-medium text-xs transition-all active:scale-95 cursor-pointer"
+            title="Share feedback or report a bug"
+          >
+            <MessageSquare className="w-3.5 h-3.5 text-sky-400" />
+            <span className="hidden lg:inline">Feedback</span>
+          </button>
+        )}
+
+        {/* Admin Portal Button (Only visible to Prathmesh / Admin) */}
+        {isAdmin && (
+          <button
+            onClick={onOpenAdminHub}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-400 font-semibold text-xs transition-all active:scale-95 cursor-pointer shadow-sm"
+            title="Admin Feedback & Management Portal"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+            <span>Admin</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+          </button>
+        )}
 
 
         {/* Cloud User Profile or Log In Button */}

@@ -1,14 +1,16 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Canvas } from './components/canvas/Canvas';
 import { Header } from './components/ui/Header';
 import { ProjectsSidebar } from './components/ui/ProjectsSidebar';
 import { LandingPage } from './components/landing/LandingPage';
+import { FeedbackModal } from './components/ui/FeedbackModal';
+import { AdminFeedbackModal } from './components/ui/AdminFeedbackModal';
 import { Node, Edge, MarkerType } from '@xyflow/react';
 import { SQLDataType } from './types/schema';
 import { 
   Plus, X, Sparkles, Database, Layers, Bot, Cloud, 
   Check, Copy, Lock, Key, LogIn, UserPlus, LogOut, RefreshCw, AlertCircle,
-  ChevronRight, FolderKanban, Play
+  ChevronRight, FolderKanban, Play, Download, FileText
 } from 'lucide-react';
 import { 
   getSupabase, 
@@ -21,9 +23,11 @@ import {
   fetchProjectsFromCloud, 
   signInWithOAuthProvider,
   onAuthChange,
+  isAdminUser,
   SUPABASE_SQL_MIGRATION,
   CloudProject 
 } from './lib/supabase';
+import { generatePostgresDDL } from './lib/sqlGenerator';
 import { sendWelcomeEmail } from './lib/emailService';
 import { User } from '@supabase/supabase-js';
 
@@ -323,6 +327,9 @@ export function App() {
   const [showAIModal, setShowAIModal] = useState(false);
   const [showSupabaseModal, setShowSupabaseModal] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [showAdminHub, setShowAdminHub] = useState(false);
+  const [sqlCopied, setSqlCopied] = useState(false);
   const [isProjectsSidebarOpen, setIsProjectsSidebarOpen] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
   const [isDarkMode, setIsDarkMode] = useState(true);
@@ -374,6 +381,24 @@ export function App() {
   };
 
   const activeProject = projects.find((p) => p.id === activeProjectId) || projects[0] || PRESET_PROJECTS[0];
+
+  // Dynamically compute production PostgreSQL DDL whenever active canvas tables or edges update!
+  const generatedSql = useMemo(() => {
+    return generatePostgresDDL(activeProject.name, activeProject.nodes, activeProject.edges);
+  }, [activeProject.name, activeProject.nodes, activeProject.edges]);
+
+  const handleDownloadSql = () => {
+    const filename = `${activeProject.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}_schema.sql`;
+    const blob = new Blob([generatedSql], { type: 'text/sql;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   const [canvasRevision, setCanvasRevision] = useState(0);
 
@@ -939,6 +964,9 @@ export function App() {
             isCloudConnected={isCloudConnected}
             isDarkMode={isDarkMode}
             onToggleTheme={toggleTheme}
+            onOpenFeedback={() => setShowFeedbackModal(true)}
+            isAdmin={isAdminUser(currentUser)}
+            onOpenAdminHub={() => setShowAdminHub(true)}
           />
 
           {/* Interactive Workspaces & Projects Sidebar (Only active for authenticated users) */}
@@ -1018,62 +1046,87 @@ export function App() {
         </>
       )}
 
-      {/* SQL Export Modal */}
+      {/* SQL Export Modal - 100% Dynamically Generated from Active Canvas */}
       {showExportModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-[#111520]/95 border border-white/20 rounded-2xl max-w-lg w-full p-6 shadow-2xl backdrop-blur-xl text-white animate-in fade-in duration-150">
+          <div className="bg-[#111520]/95 border border-white/20 rounded-2xl max-w-2xl w-full p-6 shadow-2xl backdrop-blur-xl text-white animate-in fade-in duration-150">
             <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center space-x-2">
-                <Database className="w-4 h-4 text-emerald-400" />
-                <h3 className="text-base font-bold text-white">PostgreSQL Production Schema</h3>
+              <div className="flex items-center space-x-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
+                  <Database className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">PostgreSQL Production Schema</h3>
+                  <p className="text-[11px] text-zinc-400">
+                    Live dynamic DDL synthesized from <span className="font-semibold text-emerald-300">{activeProject.name}</span>
+                  </p>
+                </div>
               </div>
               <button
                 onClick={() => setShowExportModal(false)}
-                className="text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
+                className="text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <p className="text-xs text-zinc-400 mb-4">
-              DDL script generated from <span className="font-semibold text-white">{activeProject.name}</span> canvas:
-            </p>
-            <pre className="bg-black/50 border border-white/15 p-4 rounded-xl text-xs font-mono text-emerald-400 overflow-x-auto max-h-64 select-text leading-relaxed">
-{`-- Generated by ArchSketch for ${activeProject.name}
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
-CREATE TABLE IF NOT EXISTS "users" (
-  "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  "email" VARCHAR(255) UNIQUE NOT NULL,
-  "password_hash" VARCHAR(255) NOT NULL,
-  "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+            <div className="flex items-center justify-between py-2 text-xs text-zinc-400 border-b border-white/10 mb-3">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span className="font-mono text-[11px] text-emerald-300">Live Canvas Synchronized</span>
+              </div>
+              <span className="font-mono text-[11px] text-zinc-400">
+                {activeProject.nodes.filter(n => n.type === 'tableNode').length} tables · {activeProject.edges.length} relations
+              </span>
+            </div>
 
-CREATE TABLE IF NOT EXISTS "orders" (
-  "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  "user_id" UUID NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
-  "total_amount" NUMERIC(10,2) NOT NULL,
-  "status" VARCHAR(255) NOT NULL,
-  "created_at" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_orders_user ON "orders"("user_id");`}
+            <pre className="bg-black/60 border border-white/15 p-4 rounded-xl text-xs font-mono text-emerald-400 overflow-x-auto max-h-80 select-text leading-relaxed">
+              {generatedSql}
             </pre>
-            <div className="mt-5 flex justify-end space-x-2">
-              <button
-                onClick={() => setShowExportModal(false)}
-                className="px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-xs font-medium text-zinc-300 hover:text-white border border-white/15 cursor-pointer transition-colors"
-              >
-                Close
-              </button>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(`CREATE TABLE users (id UUID PRIMARY KEY);`);
-                  setShowExportModal(false);
-                }}
-                className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-xs font-semibold text-black cursor-pointer shadow-sm active:scale-95 transition-all"
-              >
-                Copy SQL
-              </button>
+
+            <div className="mt-5 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <span className="text-[11px] text-zinc-400 font-mono hidden sm:inline">
+                Dialect: PostgreSQL 16+ • Dynamic Constraints
+              </span>
+
+              <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
+                <button
+                  onClick={() => setShowExportModal(false)}
+                  className="px-3.5 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-xs font-medium text-zinc-300 hover:text-white border border-white/15 cursor-pointer transition-colors"
+                >
+                  Close
+                </button>
+
+                <button
+                  onClick={handleDownloadSql}
+                  className="px-3.5 py-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] text-xs font-medium text-white border border-white/20 cursor-pointer flex items-center gap-1.5 transition-all active:scale-95 shadow-sm"
+                  title="Download .sql migration file"
+                >
+                  <Download className="w-3.5 h-3.5 text-sky-400" />
+                  <span>Download .sql</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(generatedSql);
+                    setSqlCopied(true);
+                    setTimeout(() => setSqlCopied(false), 2500);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-xs font-bold text-black cursor-pointer shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center gap-1.5"
+                >
+                  {sqlCopied ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-black" />
+                      <span>Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5 text-black" />
+                      <span>Copy SQL</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1410,6 +1463,19 @@ CREATE INDEX idx_orders_user ON "orders"("user_id");`}
           </div>
         </div>
       )}
+
+      {/* User Feedback & Bug Report Modal */}
+      <FeedbackModal
+        isOpen={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
+        currentUser={currentUser}
+      />
+
+      {/* Admin Feedback Hub (For Prathmesh Sargar) */}
+      <AdminFeedbackModal
+        isOpen={showAdminHub}
+        onClose={() => setShowAdminHub(false)}
+      />
     </div>
   );
 }

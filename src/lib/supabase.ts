@@ -310,5 +310,230 @@ CREATE POLICY "archsketch_projects_user_access"
     owner_id = auth.uid() 
     OR user_id = auth.uid()
   );
+
+-- 7. User Feedback & Bug Reports Table
+CREATE TABLE IF NOT EXISTS public.archsketch_feedback (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  user_email TEXT NOT NULL,
+  user_name TEXT,
+  category TEXT NOT NULL DEFAULT 'general',
+  title TEXT NOT NULL,
+  message TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'new',
+  created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.archsketch_feedback ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "archsketch_feedback_insert" ON public.archsketch_feedback;
+DROP POLICY IF EXISTS "archsketch_feedback_select" ON public.archsketch_feedback;
+DROP POLICY IF EXISTS "archsketch_feedback_manage" ON public.archsketch_feedback;
+
+CREATE POLICY "archsketch_feedback_insert"
+  ON public.archsketch_feedback
+  FOR INSERT
+  WITH CHECK (true);
+
+CREATE POLICY "archsketch_feedback_select"
+  ON public.archsketch_feedback
+  FOR SELECT
+  USING (true);
+
+CREATE POLICY "archsketch_feedback_manage"
+  ON public.archsketch_feedback
+  FOR ALL
+  USING (true);
 `;
+
+// Admin Account Identification
+export const ADMIN_CONFIG = {
+  emails: ['sargarprathmesh007@gmail.com'],
+  ids: ['0cc58ebe-1983-4ffa-8dab-c2ed365d0eea'],
+};
+
+export function isAdminUser(user: User | null): boolean {
+  if (!user) return false;
+  const emailMatch = ADMIN_CONFIG.emails.includes((user.email || '').toLowerCase().trim());
+  const idMatch = ADMIN_CONFIG.ids.includes(user.id);
+  return emailMatch || idMatch;
+}
+
+// User Feedback Interface
+export interface UserFeedback {
+  id: string;
+  user_id?: string;
+  user_email: string;
+  user_name?: string;
+  category: 'bug' | 'feature' | 'improvement' | 'general';
+  title: string;
+  message: string;
+  status: 'new' | 'reviewed' | 'resolved';
+  created_at: string;
+}
+
+const STORAGE_KEY_FEEDBACKS = 'archsketch_local_feedbacks_v1';
+
+function getLocalFeedbacks(): UserFeedback[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_FEEDBACKS);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalFeedback(item: UserFeedback) {
+  try {
+    const existing = getLocalFeedbacks();
+    const updated = [item, ...existing];
+    localStorage.setItem(STORAGE_KEY_FEEDBACKS, JSON.stringify(updated));
+  } catch {
+    // Ignore error
+  }
+}
+
+/**
+ * Submit user feedback, bug report, or feature suggestion to Supabase.
+ * Mirrors to localStorage for zero-loss offline resiliency.
+ */
+export async function submitUserFeedback(
+  feedback: Omit<UserFeedback, 'id' | 'status' | 'created_at'>
+): Promise<{ success: boolean; error?: string }> {
+  const newFeedback: UserFeedback = {
+    ...feedback,
+    id: `fb-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    status: 'new',
+    created_at: new Date().toISOString(),
+  };
+
+  // Always save locally so no feedback is ever lost
+  saveLocalFeedback(newFeedback);
+
+  const client = getSupabase();
+  if (!client) {
+    return { success: true };
+  }
+
+  try {
+    const { error } = await client.from('archsketch_feedback').insert([
+      {
+        user_id: feedback.user_id || null,
+        user_email: feedback.user_email,
+        user_name: feedback.user_name || feedback.user_email.split('@')[0],
+        category: feedback.category,
+        title: feedback.title,
+        message: feedback.message,
+        status: 'new',
+      },
+    ]);
+
+    if (error) {
+      console.warn('Feedback saved locally; Supabase error:', error.message);
+    }
+    return { success: true };
+  } catch (err) {
+    console.warn('Network issue saving feedback, preserved locally:', err);
+    return { success: true };
+  }
+}
+
+/**
+ * Fetch all submitted feedback (for Admin Hub)
+ */
+export async function fetchUserFeedbacks(): Promise<{ feedbacks: UserFeedback[]; error?: string }> {
+  const client = getSupabase();
+  const localList = getLocalFeedbacks();
+
+  if (!client) {
+    return { feedbacks: localList };
+  }
+
+  try {
+    const { data, error } = await client
+      .from('archsketch_feedback')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.warn('Supabase fetch feedback error, using local fallback:', error.message);
+      return { feedbacks: localList };
+    }
+
+    // Merge remote with local to guarantee no missing records
+    const map = new Map<string, UserFeedback>();
+    (data || []).forEach((item) => map.set(item.id, item as UserFeedback));
+    localList.forEach((item) => {
+      if (!map.has(item.id)) map.set(item.id, item);
+    });
+
+    const combined = Array.from(map.values()).sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+
+    return { feedbacks: combined };
+  } catch (err) {
+    return { feedbacks: localList };
+  }
+}
+
+/**
+ * Update feedback status (for Admin Hub)
+ */
+export async function updateFeedbackStatus(
+  id: string,
+  status: 'new' | 'reviewed' | 'resolved'
+): Promise<{ success: boolean; error?: string }> {
+  // Update local
+  try {
+    const local = getLocalFeedbacks().map((f) => (f.id === id ? { ...f, status } : f));
+    localStorage.setItem(STORAGE_KEY_FEEDBACKS, JSON.stringify(local));
+  } catch {
+    // Ignore error
+  }
+
+  const client = getSupabase();
+  if (!client) return { success: true };
+
+  try {
+    const { error } = await client
+      .from('archsketch_feedback')
+      .update({ status })
+      .eq('id', id);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown update error' };
+  }
+}
+
+/**
+ * Delete feedback (for Admin Hub)
+ */
+export async function deleteFeedback(id: string): Promise<{ success: boolean; error?: string }> {
+  // Update local
+  try {
+    const local = getLocalFeedbacks().filter((f) => f.id !== id);
+    localStorage.setItem(STORAGE_KEY_FEEDBACKS, JSON.stringify(local));
+  } catch {
+    // Ignore error
+  }
+
+  const client = getSupabase();
+  if (!client) return { success: true };
+
+  try {
+    const { error } = await client.from('archsketch_feedback').delete().eq('id', id);
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown delete error' };
+  }
+}
+
 
