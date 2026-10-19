@@ -1,0 +1,97 @@
+@import "tailwindcss";
+@import "@xyflow/react/dist/style.css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+}
+
+:root {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --border: #e2e8f0;
+}
+
+.dark {
+  --background: #0d1117;
+  --foreground: #f0f6fc;
+  --card: #161b22;
+  --muted: #21262d;
+  --muted-foreground: #8b949e;
+  --border: #30363d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--background);
+  color: var(--foreground);
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Ensure ALL interactive buttons and icons show the click hand cursor (pointer) */
+button,
+[role="button"],
+a,
+select,
+summary,
+input[type="button"],
+input[type="submit"],
+.cursor-pointer {
+  cursor: pointer !important;
+}
+
+/* React Flow controls & minimap buttons */
+.react-flow__controls button,
+.react-flow__panel button {
+  cursor: pointer !important;
+}
+
+/* Connection handle hover cursor */
+.react-flow__handle {
+  cursor: crosshair !important;
+}
+
+/* Tactile micro-feedback for clickable elements */
+button:not(:disabled),
+[role="button"]:not(:disabled) {
+  transition: transform 0.12s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+button:hover:not(:disabled),
+[role="button"]:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+button:active:not(:disabled),
+[role="button"]:active:not(:disabled) {
+  transform: scale(0.96) !important;
+}
+
+/* Interactive SVG icon feedback */
+button svg,
+[role="button"] svg {
+  pointer-events: none;
+  transition: transform 0.15s ease;
+}
+
+button:hover svg,
+[role="button"]:hover svg {
+  transform: scale(1.08);
+}
