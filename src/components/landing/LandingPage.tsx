@@ -1,603 +1,1509 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
-  Layers, Sparkles, Database, ArrowRight, CheckCircle2, 
-  Zap, Play, Copy, Check, Server, Moon, Sun, LogIn 
+  Layers, Database, ArrowRight, CheckCircle2, 
+  Zap, Play, Copy, Check, Server, LogIn,
+  Shield, Cpu, GitBranch, Boxes, FileCode,
+  Terminal, ChevronRight, AlertTriangle,
+  Code2, Plus, Move, RefreshCw, Sparkles,
+  ArrowUpRight, Activity, CheckCircle, Network,
+  Sun, Moon, Radio, Eye
 } from 'lucide-react';
 import { Footer } from '../Footer';
 import { User } from '@supabase/supabase-js';
 
-interface LandingPageProps {
+export interface LandingPageProps {
   onEnterStudio: () => void;
   onOpenAuth: () => void;
   onOpenCloudSync?: () => void;
   currentUser?: User | null;
-  isDarkMode: boolean;
-  onToggleTheme: () => void;
+  isDarkMode?: boolean;
+  onToggleTheme?: () => void;
 }
 
-const PRESET_DEMOS = {
+// Rotating Dynamic Headline Phrases with Contextual Icons & Theme Colors
+const ROTATING_PHRASES = [
+  { text: 'relational schemas', badge: 'PostgreSQL 16', icon: Database, color: 'text-amber-600 dark:text-amber-400' },
+  { text: 'microservice topologies', badge: 'gRPC & Docker', icon: Server, color: 'text-blue-600 dark:text-blue-400' },
+  { text: 'AI vector pipelines', badge: 'pgvector 1536d', icon: Cpu, color: 'text-purple-600 dark:text-purple-400' },
+  { text: 'distributed caches', badge: 'Redis RESP', icon: Zap, color: 'text-rose-600 dark:text-rose-400' },
+  { text: 'system architecture', badge: 'Deterministic CAD', icon: Layers, color: 'text-amber-500 dark:text-amber-400' },
+];
+
+// Interactive Hero Canvas Node Definition
+interface CanvasNode {
+  id: string;
+  name: string;
+  type: 'table' | 'service' | 'cache' | 'queue';
+  x: number;
+  y: number;
+  color: string;
+  badge: string;
+  columns: Array<{ name: string; type: string; isPk?: boolean; isFk?: boolean }>;
+}
+
+interface CanvasEdge {
+  id: string;
+  from: string;
+  to: string;
+  label: string;
+  protocol: string;
+}
+
+// Category Profiler Data Structure
+interface ArchitectureProfile {
+  id: string;
+  label: string;
+  category: string;
+  description: string;
+  metrics: {
+    healthScore: number;
+    normalization: string;
+    indexCoverage: string;
+    deadlockRisk: string;
+    estLatency: string;
+    throughput: string;
+  };
+  linterRules: Array<{
+    code: string;
+    status: 'pass' | 'warn';
+    title: string;
+    description: string;
+  }>;
+  sql: string;
+  prisma: string;
+  supabaseMigration: string;
+}
+
+const CATEGORY_PROFILES: Record<string, ArchitectureProfile> = {
   ecommerce: {
-    title: 'E-Commerce Platform Core',
-    desc: 'PostgreSQL relational core with Redis caching & API Gateway routing',
-    tables: [
+    id: 'ecommerce',
+    label: 'E-Commerce Core',
+    category: 'High-Concurrency Retail',
+    description: 'Relational order fulfillment pipeline paired with Redis session memory and Kafka outbox dispatch for zero dropped carts.',
+    metrics: {
+      healthScore: 98,
+      normalization: '3NF Compliant',
+      indexCoverage: '96% (Composite)',
+      deadlockRisk: '0.00%',
+      estLatency: '2.1 ms',
+      throughput: '45,000 req/s',
+    },
+    linterRules: [
       {
-        name: 'public.users',
-        color: 'border-amber-500/40',
-        titleColor: 'text-amber-600 dark:text-amber-400',
-        badge: 'PK: id (UUID)',
-        cols: [
-          { name: 'id', type: 'UUID PRIMARY KEY' },
-          { name: 'email', type: 'VARCHAR(255) UNIQUE' },
-          { name: 'password_hash', type: 'VARCHAR(255)' },
-          { name: 'created_at', type: 'TIMESTAMP' },
-        ],
+        code: 'LINT-01',
+        status: 'pass',
+        title: 'Composite Index Verified',
+        description: 'B-Tree on (user_id, created_at DESC) eliminates sequential scans during order queries.',
       },
       {
-        name: 'public.orders',
-        color: 'border-orange-500/40',
-        titleColor: 'text-orange-600 dark:text-orange-400',
-        badge: 'FK → users',
-        cols: [
-          { name: 'id', type: 'UUID PRIMARY KEY' },
-          { name: 'user_id', type: 'UUID (FK)' },
-          { name: 'total_amount', type: 'NUMERIC(10,2)' },
-          { name: 'status', type: 'VARCHAR(255)' },
-        ],
+        code: 'LINT-02',
+        status: 'pass',
+        title: 'Decoupled Session State',
+        description: 'Shopping carts bypass relational row-level locks via Redis sliding hash sets.',
       },
       {
-        name: 'Redis Cache Layer',
-        color: 'border-rose-500/40',
-        titleColor: 'text-rose-600 dark:text-rose-400',
-        badge: 'Port 6379',
-        cols: [
-          { name: 'user:session:*', type: 'JWT TOKEN STRING' },
-          { name: 'cart:items:*', type: 'REDIS HASH' },
-          { name: 'rate_limit:*', type: 'INCR SLIDING WINDOW' },
-        ],
+        code: 'LINT-03',
+        status: 'warn',
+        title: 'Cascade Delete Guard',
+        description: 'ON DELETE CASCADE active on orders -> recommend soft delete with archived_at for audit compliance.',
       },
     ],
-    sql: `-- Generated by ArchSketch
+    sql: `-- ArchSketch Architecture Compiler (Target: PostgreSQL 16)
+-- Schema: High-Throughput E-Commerce
+
+CREATE TYPE order_status AS ENUM ('pending', 'authorized', 'processing', 'shipped', 'completed');
+
 CREATE TABLE users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email VARCHAR(255) UNIQUE NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp()
 );
 
 CREATE TABLE orders (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  total_amount NUMERIC(10,2) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-CREATE INDEX idx_orders_user ON orders(user_id);`,
-  },
-  rideshare: {
-    title: 'Ride Hailing & Geo Dispatch',
-    desc: 'Driver matchmaking, real-time telemetry, and ride requests',
-    tables: [
-      {
-        name: 'public.drivers',
-        color: 'border-amber-500/40',
-        titleColor: 'text-amber-600 dark:text-amber-400',
-        badge: 'PK: id (UUID)',
-        cols: [
-          { name: 'id', type: 'UUID PRIMARY KEY' },
-          { name: 'vehicle_plate', type: 'VARCHAR(255)' },
-          { name: 'is_active', type: 'BOOLEAN' },
-          { name: 'rating', type: 'NUMERIC(3,2)' },
-        ],
-      },
-      {
-        name: 'public.rides',
-        color: 'border-orange-500/40',
-        titleColor: 'text-orange-600 dark:text-orange-400',
-        badge: 'FK → drivers',
-        cols: [
-          { name: 'id', type: 'UUID PRIMARY KEY' },
-          { name: 'driver_id', type: 'UUID (FK)' },
-          { name: 'rider_id', type: 'UUID (FK)' },
-          { name: 'fare_amount', type: 'NUMERIC(10,2)' },
-        ],
-      },
-      {
-        name: 'Geo Match Engine',
-        color: 'border-rose-500/40',
-        titleColor: 'text-rose-600 dark:text-rose-400',
-        badge: 'gRPC / WebSocket',
-        cols: [
-          { name: 'h3_geo_index', type: 'HEXAGON RADIAL CELL' },
-          { name: 'driver_pings', type: 'PUBSUB STREAM' },
-          { name: 'eta_prediction', type: 'ML PIPELINE' },
-        ],
-      },
-    ],
-    sql: `-- Generated by ArchSketch for Geo Dispatch
-CREATE TABLE drivers (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  vehicle_plate VARCHAR(255) NOT NULL,
-  is_active BOOLEAN DEFAULT false,
-  rating NUMERIC(3,2) DEFAULT 5.00
+  total_cents INT NOT NULL CHECK (total_cents >= 0),
+  status order_status NOT NULL DEFAULT 'pending',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp()
 );
 
-CREATE TABLE rides (
+CREATE TABLE order_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  driver_id UUID REFERENCES drivers(id),
-  rider_id UUID NOT NULL,
-  fare_amount NUMERIC(10,2) NOT NULL
-);`,
+  order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  sku VARCHAR(64) NOT NULL,
+  quantity INT NOT NULL CHECK (quantity > 0),
+  unit_cents INT NOT NULL
+);
+
+-- Profiler Optimization: Composite index prevents full table scans on user timelines
+CREATE INDEX idx_orders_user_created ON orders (user_id, created_at DESC);
+CREATE INDEX idx_items_order ON order_items (order_id);`,
+    prisma: `// Prisma Schema generated by ArchSketch
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  orders       Order[]
+}
+
+model Order {
+  id         String      @id @default(uuid())
+  userId     String
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  totalCents Int
+  status     String      @default("pending")
+  createdAt  DateTime    @default(now())
+  items      OrderItem[]
+
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+model OrderItem {
+  id        String @id @default(uuid())
+  orderId   String
+  order     Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sku       String
+  quantity  Int
+  unitCents Int
+
+  @@index([orderId])
+}`,
+    supabaseMigration: `-- Supabase SQL Migration
+-- Auto-generated by ArchSketch
+BEGIN;
+
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+CREATE TABLE IF NOT EXISTS public.users (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  email TEXT UNIQUE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can only read own record" 
+ON public.users FOR SELECT 
+USING (auth.uid() = id);
+
+COMMIT;`,
   },
-  social: {
-    title: 'Social Graph & Feed Generator',
-    desc: 'High-throughput relational accounts with Kafka event pipeline',
-    tables: [
+  fintech: {
+    id: 'fintech',
+    label: 'Fintech Ledger',
+    category: 'Zero-Loss Ledger',
+    description: 'Double-entry balancing ledger with cryptographic SHA-256 idempotency locks and append-only audit sinks.',
+    metrics: {
+      healthScore: 99,
+      normalization: 'Strict Append-Only',
+      indexCoverage: '100% Clustered',
+      deadlockRisk: '0.00%',
+      estLatency: '1.4 ms',
+      throughput: '32,000 tx/s',
+    },
+    linterRules: [
       {
-        name: 'public.accounts',
-        color: 'border-amber-500/40',
-        titleColor: 'text-amber-600 dark:text-amber-400',
-        badge: 'PK: id (UUID)',
-        cols: [
-          { name: 'id', type: 'UUID PRIMARY KEY' },
-          { name: 'username', type: 'VARCHAR(255) UNIQUE' },
-          { name: 'followers_count', type: 'INT' },
-        ],
+        code: 'LINT-01',
+        status: 'pass',
+        title: 'Zero-Sum Invariant',
+        description: 'Postgres constraint verifies debits equal credits before transaction commit.',
       },
       {
-        name: 'public.posts',
-        color: 'border-orange-500/40',
-        titleColor: 'text-orange-600 dark:text-orange-400',
-        badge: 'FK → accounts',
-        cols: [
-          { name: 'id', type: 'UUID PRIMARY KEY' },
-          { name: 'author_id', type: 'UUID (FK)' },
-          { name: 'content', type: 'TEXT' },
-          { name: 'likes_count', type: 'INT' },
-        ],
+        code: 'LINT-02',
+        status: 'pass',
+        title: 'Replay Protection',
+        description: 'Idempotency table with unique SHA-256 constraint prevents duplicate settlement executions.',
       },
       {
-        name: 'Kafka Fanout Worker',
-        color: 'border-rose-500/40',
-        titleColor: 'text-rose-600 dark:text-rose-400',
-        badge: 'Topic: feed.events',
-        cols: [
-          { name: 'event_id', type: 'STRING (KAFKA MSG)' },
-          { name: 'fanout_queue', type: 'REDIS LIST BUFFER' },
-          { name: 'push_notifier', type: 'WEBSOCKET DISPATCH' },
-        ],
+        code: 'LINT-03',
+        status: 'pass',
+        title: 'Deadlock Immunity',
+        description: 'Accounts are queried and locked in deterministic sorted ID order.',
       },
     ],
-    sql: `-- Generated by ArchSketch Social Graph
+    sql: `-- ArchSketch Architecture Compiler (Target: PostgreSQL 16)
+-- Schema: Double-Entry Immutable Ledger
+
 CREATE TABLE accounts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  username VARCHAR(255) UNIQUE NOT NULL,
-  followers_count INT DEFAULT 0
+  currency CHAR(3) NOT NULL DEFAULT 'USD',
+  cleared_balance_cents BIGINT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp()
 );
 
-CREATE TABLE posts (
+CREATE TABLE journal_entries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  author_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  idempotency_key VARCHAR(64) UNIQUE NOT NULL,
+  description TEXT NOT NULL,
+  posted_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp()
+);
+
+CREATE TABLE ledger_lines (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  journal_id UUID NOT NULL REFERENCES journal_entries(id) ON DELETE RESTRICT,
+  account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE RESTRICT,
+  amount_cents BIGINT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp()
+);
+
+-- Profiler Optimization: Clustered lookup for account balance reconciliation
+CREATE INDEX idx_ledger_acct_time ON ledger_lines(account_id, created_at DESC);`,
+    prisma: `// Prisma Schema for Fintech Double-Entry Ledger
+model Account {
+  id                  String       @id @default(uuid())
+  currency            String       @default("USD")
+  clearedBalanceCents BigInt       @default(0)
+  createdAt           DateTime     @default(now())
+  lines               LedgerLine[]
+}
+
+model JournalEntry {
+  id             String       @id @default(uuid())
+  idempotencyKey String       @unique
+  description    String
+  postedAt       DateTime     @default(now())
+  lines          LedgerLine[]
+}
+
+model LedgerLine {
+  id          String       @id @default(uuid())
+  journalId   String
+  journal     JournalEntry @relation(fields: [journalId], references: [id], onDelete: Restrict)
+  accountId   String
+  account     Account      @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  amountCents BigInt
+  createdAt   DateTime     @default(now())
+
+  @@index([accountId, createdAt(sort: Desc)])
+}`,
+    supabaseMigration: `-- Supabase Immutable Ledger Migration
+BEGIN;
+
+CREATE TABLE public.accounts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  currency TEXT NOT NULL DEFAULT 'USD',
+  balance_cents BIGINT NOT NULL DEFAULT 0
+);
+
+ALTER TABLE public.accounts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Admins can inspect ledger" ON public.accounts FOR SELECT TO authenticated USING (true);
+
+COMMIT;`,
+  },
+  ai_agent: {
+    id: 'ai_agent',
+    label: 'AI Vector RAG',
+    category: 'LLM Orchestration',
+    description: 'Vector embeddings with HNSW index, semantic memory deduplication, and conversational context windows.',
+    metrics: {
+      healthScore: 97,
+      normalization: 'Hybrid Relational-Vector',
+      indexCoverage: 'HNSW Cosine (M=16)',
+      deadlockRisk: '0.00%',
+      estLatency: '3.6 ms',
+      throughput: '18,500 qps',
+    },
+    linterRules: [
+      {
+        code: 'LINT-01',
+        status: 'pass',
+        title: 'HNSW Cosine Operator',
+        description: 'Vector index configured with vector_cosine_ops for cosine similarity queries.',
+      },
+      {
+        code: 'LINT-02',
+        status: 'pass',
+        title: 'Semantic Cache Layer',
+        description: 'Intercepts identical user intent vectors before invoking LLM inference APIs.',
+      },
+      {
+        code: 'LINT-03',
+        status: 'warn',
+        title: 'Dimension Alignment',
+        description: '1536-dim vector configured for OpenAI text-embedding-3 or text-embedding-ada-002.',
+      },
+    ],
+    sql: `-- ArchSketch Architecture Compiler (Target: PostgreSQL 16 + pgvector)
+CREATE EXTENSION IF NOT EXISTS vector;
+
+CREATE TABLE agent_sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  agent_slug VARCHAR(64) NOT NULL,
+  system_prompt TEXT NOT NULL,
+  token_budget INT NOT NULL DEFAULT 128000,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp()
+);
+
+CREATE TABLE vector_documents (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id UUID REFERENCES agent_sessions(id) ON DELETE CASCADE,
   content TEXT NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);`,
+  embedding VECTOR(1536) NOT NULL,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp()
+);
+
+-- Profiler Optimization: HNSW index with M=16 for sub-4ms nearest neighbors
+CREATE INDEX idx_vector_hnsw ON vector_documents 
+USING hnsw (embedding vector_cosine_ops)
+WITH (m = 16, ef_construction = 64);`,
+    prisma: `// Prisma Schema with pgvector extension
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pgvector(map: "vector")]
+}
+
+model AgentSession {
+  id           String           @id @default(uuid())
+  agentSlug    String
+  systemPrompt String
+  tokenBudget  Int              @default(128000)
+  documents    VectorDocument[]
+}
+
+model VectorDocument {
+  id        String                 @id @default(uuid())
+  sessionId String
+  session   AgentSession           @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  content   String
+  embedding Unsupported("vector")
+  metadata  Json                   @default("{}")
+}`,
+    supabaseMigration: `-- Supabase pgvector Migration
+BEGIN;
+CREATE EXTENSION IF NOT EXISTS vector;
+
+CREATE TABLE public.knowledge_base (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  content TEXT NOT NULL,
+  embedding VECTOR(1536)
+);
+
+CREATE INDEX ON public.knowledge_base USING hnsw (embedding vector_cosine_ops);
+COMMIT;`,
+  },
+  saas: {
+    id: 'saas',
+    label: 'Multi-Tenant SaaS',
+    category: 'Tenant Isolation',
+    description: 'B2B enterprise multi-tenant boundary with strict Postgres Row-Level Security (RLS) policies.',
+    metrics: {
+      healthScore: 99,
+      normalization: '3NF Scoped Partition',
+      indexCoverage: '98% (Tenant Scoped)',
+      deadlockRisk: '0.00%',
+      estLatency: '1.2 ms',
+      throughput: '80,000 req/s',
+    },
+    linterRules: [
+      {
+        code: 'LINT-01',
+        status: 'pass',
+        title: 'RLS Policy Active',
+        description: 'All table rows evaluate tenant_id against session variable app.current_tenant_id.',
+      },
+      {
+        code: 'LINT-02',
+        status: 'pass',
+        title: 'Zero Leakage Guarantee',
+        description: 'Tables enforce ENABLE ROW LEVEL SECURITY with FORCE ROW LEVEL SECURITY enabled.',
+      },
+      {
+        code: 'LINT-03',
+        status: 'pass',
+        title: 'Prefix Indexing',
+        description: 'All composite foreign keys start with tenant_id for automated partition pruning.',
+      },
+    ],
+    sql: `-- ArchSketch Architecture Compiler (Target: PostgreSQL 16 / Supabase)
+-- Multi-Tenant SaaS with Strict Row-Level Security
+
+CREATE TABLE tenants (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(128) NOT NULL,
+  slug VARCHAR(64) UNIQUE NOT NULL,
+  plan VARCHAR(32) NOT NULL DEFAULT 'enterprise',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp()
+);
+
+CREATE TABLE workspaces (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  name VARCHAR(128) NOT NULL,
+  settings JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp()
+);
+
+-- Row-Level Security Policy
+ALTER TABLE workspaces ENABLE ROW LEVEL SECURITY;
+ALTER TABLE workspaces FORCE ROW LEVEL SECURITY;
+
+CREATE POLICY tenant_isolation_policy ON workspaces
+  FOR ALL
+  USING (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid);
+
+CREATE INDEX idx_workspaces_tenant ON workspaces(tenant_id);`,
+    prisma: `// Prisma Schema with Multi-Tenant RLS Scope
+model Tenant {
+  id         String      @id @default(uuid())
+  name       String
+  slug       String      @unique
+  plan       String      @default("enterprise")
+  createdAt  DateTime    @default(now())
+  workspaces Workspace[]
+}
+
+model Workspace {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name      String
+  settings  Json     @default("{}")
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+}`,
+    supabaseMigration: `-- Supabase RLS Migration
+BEGIN;
+
+CREATE TABLE public.organizations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL
+);
+
+ALTER TABLE public.organizations ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Org members can read" ON public.organizations
+  FOR SELECT TO authenticated
+  USING (auth.uid() IN (SELECT user_id FROM public.org_members WHERE org_id = id));
+
+COMMIT;`,
   },
 };
 
-// High-fidelity SQL syntax highlighter for real IDE code editor view
-function highlightSqlLine(line: string) {
-  if (line.trim().startsWith('--')) {
-    return <span className="text-zinc-500 italic">{line}</span>;
-  }
+// Initial Interactive Hero Canvas Nodes
+const INITIAL_HERO_NODES: CanvasNode[] = [
+  {
+    id: 'gateway',
+    name: 'API Gateway & Router',
+    type: 'service',
+    x: 40,
+    y: 35,
+    color: '#2563eb',
+    badge: 'HTTPS / GraphQL',
+    columns: [
+      { name: 'port', type: '443' },
+      { name: 'auth', type: 'JWT Guard' },
+      { name: 'rate_limit', type: '1000/s' },
+    ],
+  },
+  {
+    id: 'redis',
+    name: 'Redis Session Cache',
+    type: 'cache',
+    x: 360,
+    y: 35,
+    color: '#dc2626',
+    badge: 'RESP :6379',
+    columns: [
+      { name: 'session:*', type: 'JWT Hash' },
+      { name: 'cart:*', type: 'Redis Hash' },
+    ],
+  },
+  {
+    id: 'users',
+    name: 'public.users',
+    type: 'table',
+    x: 40,
+    y: 220,
+    color: '#d97706',
+    badge: 'PK: id (UUID)',
+    columns: [
+      { name: 'id', type: 'UUID', isPk: true },
+      { name: 'email', type: 'VARCHAR(255)' },
+      { name: 'created_at', type: 'TIMESTAMPTZ' },
+    ],
+  },
+  {
+    id: 'orders',
+    name: 'public.orders',
+    type: 'table',
+    x: 360,
+    y: 220,
+    color: '#b45309',
+    badge: 'FK → users.id',
+    columns: [
+      { name: 'id', type: 'UUID', isPk: true },
+      { name: 'user_id', type: 'UUID', isFk: true },
+      { name: 'total_cents', type: 'INT' },
+      { name: 'status', type: 'order_status' },
+    ],
+  },
+  {
+    id: 'kafka',
+    name: 'Order Event Outbox',
+    type: 'queue',
+    x: 680,
+    y: 220,
+    color: '#7c3aed',
+    badge: 'Kafka :9092',
+    columns: [
+      { name: 'topic', type: 'orders.created' },
+      { name: 'partition', type: 'user_id' },
+    ],
+  },
+];
 
-  // Tokenize line while preserving delimiters
-  const tokens = line.split(/(\s+|[(),;]|\b)/);
-
-  const keywords = new Set([
-    'CREATE', 'TABLE', 'IF', 'NOT', 'EXISTS', 'PRIMARY', 'KEY', 'DEFAULT',
-    'UNIQUE', 'NULL', 'REFERENCES', 'ON', 'DELETE', 'CASCADE', 'INDEX',
-    'EXTENSION', 'SELECT', 'FROM', 'WHERE', 'INSERT', 'INTO'
-  ]);
-
-  const dataTypes = new Set([
-    'UUID', 'VARCHAR', 'TIMESTAMP', 'NUMERIC', 'INT', 'BIGINT',
-    'BOOLEAN', 'TEXT', 'SERIAL', 'JSONB', 'DATE'
-  ]);
-
-  const functions = new Set([
-    'gen_random_uuid', 'CURRENT_TIMESTAMP', 'now', 'uuid_generate_v4'
-  ]);
-
-  return tokens.map((token, i) => {
-    const upper = token.toUpperCase();
-    if (keywords.has(upper)) {
-      return <span key={i} className="text-purple-400 font-semibold">{token}</span>;
-    }
-    if (dataTypes.has(upper)) {
-      return <span key={i} className="text-emerald-400 font-medium">{token}</span>;
-    }
-    if (functions.has(token) || functions.has(upper)) {
-      return <span key={i} className="text-amber-300 font-mono">{token}</span>;
-    }
-    if (/^\d+(\.\d+)?$/.test(token)) {
-      return <span key={i} className="text-cyan-300 font-mono">{token}</span>;
-    }
-    if (token === '(' || token === ')' || token === ',' || token === ';') {
-      return <span key={i} className="text-zinc-500">{token}</span>;
-    }
-    return <span key={i} className="text-zinc-200">{token}</span>;
-  });
-}
+const INITIAL_HERO_EDGES: CanvasEdge[] = [
+  { id: 'e1', from: 'gateway', to: 'redis', label: 'Session Cache', protocol: 'RESP' },
+  { id: 'e2', from: 'gateway', to: 'users', label: 'Auth Validation', protocol: 'SQL' },
+  { id: 'e3', from: 'users', to: 'orders', label: '1 : N Relation', protocol: 'FK UUID' },
+  { id: 'e4', from: 'orders', to: 'kafka', label: 'Event Outbox', protocol: 'TCP :9092' },
+];
 
 export const LandingPage: React.FC<LandingPageProps> = ({
   onEnterStudio,
   onOpenAuth,
   onOpenCloudSync,
   currentUser,
-  isDarkMode,
+  isDarkMode = false,
   onToggleTheme,
 }) => {
-  const [activePreset, setActivePreset] = useState<'ecommerce' | 'rideshare' | 'social'>('ecommerce');
-  const [copied, setCopied] = useState(false);
+  // Rotating Dynamic Headline Text State
+  const [phraseIndex, setPhraseIndex] = useState(0);
 
-  const currentPreset = PRESET_DEMOS[activePreset];
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setPhraseIndex((prev) => (prev + 1) % ROTATING_PHRASES.length);
+    }, 2800);
+    return () => clearInterval(timer);
+  }, []);
 
-  const handleCopySql = () => {
-    navigator.clipboard.writeText(currentPreset.sql);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  // Hero Interactive Canvas State
+  const [nodes, setNodes] = useState<CanvasNode[]>(INITIAL_HERO_NODES);
+  const [selectedNodeId, setSelectedNodeId] = useState<string>('orders');
+  const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
+  const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const canvasContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Category Profiler State
+  const [activeCategory, setActiveCategory] = useState<string>('ecommerce');
+  const [activeCodeTab, setActiveCodeTab] = useState<'sql' | 'prisma' | 'supabase'>('sql');
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedCli, setCopiedCli] = useState(false);
+
+  const currentProfile = CATEGORY_PROFILES[activeCategory] || CATEGORY_PROFILES.ecommerce;
+  const currentPhrase = ROTATING_PHRASES[phraseIndex];
+
+  // Node Drag Handlers for Hero Interactive Canvas
+  const handleMouseDownNode = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setSelectedNodeId(id);
+    setDraggingNodeId(id);
+
+    const node = nodes.find((n) => n.id === id);
+    if (!node || !canvasContainerRef.current) return;
+
+    const rect = canvasContainerRef.current.getBoundingClientRect();
+    dragOffsetRef.current = {
+      x: e.clientX - rect.left - node.x,
+      y: e.clientY - rect.top - node.y,
+    };
   };
 
+  const handleMouseMoveCanvas = useCallback((e: React.MouseEvent) => {
+    if (!draggingNodeId || !canvasContainerRef.current) return;
+
+    const rect = canvasContainerRef.current.getBoundingClientRect();
+    const newX = Math.max(10, Math.min(rect.width - 240, e.clientX - rect.left - dragOffsetRef.current.x));
+    const newY = Math.max(10, Math.min(rect.height - 180, e.clientY - rect.top - dragOffsetRef.current.y));
+
+    setNodes((prev) =>
+      prev.map((node) => (node.id === draggingNodeId ? { ...node, x: newX, y: newY } : node))
+    );
+  }, [draggingNodeId]);
+
+  const handleMouseUpCanvas = useCallback(() => {
+    setDraggingNodeId(null);
+  }, []);
+
+  const handleAddSampleNode = () => {
+    const newId = `node_${Date.now()}`;
+    const newNode: CanvasNode = {
+      id: newId,
+      name: 'public.payments',
+      type: 'table',
+      x: 200,
+      y: 130,
+      color: '#059669',
+      badge: 'FK → orders.id',
+      columns: [
+        { name: 'id', type: 'UUID', isPk: true },
+        { name: 'order_id', type: 'UUID', isFk: true },
+        { name: 'provider', type: 'stripe' },
+      ],
+    };
+    setNodes((prev) => [...prev, newNode]);
+    setSelectedNodeId(newId);
+  };
+
+  const handleResetCanvas = () => {
+    setNodes(INITIAL_HERO_NODES);
+    setSelectedNodeId('orders');
+  };
+
+  const handleCopyCode = () => {
+    let text = currentProfile.sql;
+    if (activeCodeTab === 'prisma') text = currentProfile.prisma;
+    if (activeCodeTab === 'supabase') text = currentProfile.supabaseMigration;
+
+    navigator.clipboard.writeText(text);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
+  };
+
+  const handleCopyCli = () => {
+    navigator.clipboard.writeText('npx archsketch@latest init');
+    setCopiedCli(true);
+    setTimeout(() => setCopiedCli(false), 2000);
+  };
+
+  const selectedNode = nodes.find((n) => n.id === selectedNodeId);
+
   return (
-    <div className="w-full min-h-screen bg-background text-foreground flex flex-col overflow-x-hidden selection:bg-amber-500/30 selection:text-foreground font-sans transition-colors">
-      {/* Top Floating Glass Navigation Bar - Unified with Canvas Header */}
-      <header className="sticky top-0 z-50 w-full px-3.5 sm:px-6 py-2.5 sm:py-3.5 backdrop-blur-xl bg-card/85 border-b border-border transition-colors">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
-          {/* Brand Logo & Title */}
+    <div className="w-full min-h-screen bg-[#fafbfc] dark:bg-[#08090d] text-[#090a0f] dark:text-[#f0f6fc] flex flex-col font-outfit antialiased selection:bg-amber-500/20 selection:text-black transition-colors duration-200">
+      {/* Top Professional Navigation Bar with Theme Toggle */}
+      <header className="sticky top-0 z-50 w-full backdrop-blur-xl bg-white/90 dark:bg-[#08090d]/90 border-b border-slate-200/90 dark:border-white/[0.08] shadow-2xs transition-colors">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+          {/* Logo & Brand */}
           <div 
-            className="flex items-center space-x-2.5 sm:space-x-3 cursor-pointer group shrink-0" 
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            title="ArchSketch Home"
+            className="flex items-center space-x-2.5 cursor-pointer group"
           >
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-black font-black text-sm shadow-sm select-none group-hover:scale-105 transition-transform shrink-0">
-              <Layers className="w-4 h-4 text-black" />
+            <div className="w-9 h-9 rounded-xl bg-black dark:bg-amber-500 flex items-center justify-center text-white dark:text-black font-black text-xs shadow-md shadow-black/15 group-hover:scale-105 transition-transform">
+              <Layers className="w-4 h-4 text-amber-400 dark:text-black stroke-[2.75]" />
             </div>
-            <div>
-              <h1 className="font-extrabold text-sm tracking-tight text-foreground flex items-center gap-1.5 group-hover:text-amber-500 transition-colors">
+            <div className="flex items-center gap-2">
+              <span className="font-orbitron font-extrabold text-base sm:text-lg tracking-tight text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
                 ArchSketch
-                <span className="text-[9px] font-mono px-1.5 py-0.2 rounded-md bg-amber-500/10 text-amber-500 border border-amber-500/20 font-normal">v2</span>
-              </h1>
-              <p className="text-[11px] text-muted-foreground hidden sm:block">
-                System Architecture &amp; Database ERD Canvas
-              </p>
+              </span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/[0.08] text-slate-700 dark:text-zinc-300 font-bold border border-slate-200 dark:border-white/[0.1]">
+                v2.5
+              </span>
             </div>
           </div>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center space-x-6 lg:space-x-8 text-xs font-medium text-muted-foreground">
-            <a href="#features" className="hover:text-foreground transition-colors">Features</a>
-            <a href="#interactive-sandbox" className="hover:text-foreground transition-colors">Interactive CAD</a>
-            <a href="#footer-lamp" className="hover:text-foreground transition-colors">Showcase</a>
+          <nav className="hidden md:flex items-center space-x-8 text-xs font-bold text-slate-600 dark:text-zinc-400 tracking-wide">
+            <a href="#interactive-canvas" className="hover:text-black dark:hover:text-white transition-colors">Interactive CAD</a>
+            <a href="#profiler" className="hover:text-black dark:hover:text-white transition-colors">Schema Linter</a>
+            <a href="#categories" className="hover:text-black dark:hover:text-white transition-colors">Topologies</a>
+            <a href="#comparison" className="hover:text-black dark:hover:text-white transition-colors">Benchmark</a>
           </nav>
 
-          {/* Right Action Bar: Consistent with Canvas Header */}
-          <div className="flex items-center space-x-1.5 sm:space-x-2.5 shrink-0">
-            {/* Auth Button or User Profile Chip */}
+          {/* Right Action Group */}
+          <div className="flex items-center space-x-2.5">
+            {/* Dark / Light Mode Switcher */}
+            {onToggleTheme && (
+              <button
+                onClick={onToggleTheme}
+                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.08] dark:hover:bg-white/[0.15] border border-slate-200 dark:border-white/[0.1] text-slate-800 dark:text-zinc-200 transition-all cursor-pointer"
+                title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              >
+                {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
+              </button>
+            )}
+
             {currentUser ? (
               <button
                 onClick={onOpenCloudSync}
-                className="flex items-center space-x-2 px-2.5 py-1.5 rounded-xl bg-muted/80 hover:bg-muted border border-border text-foreground font-medium text-xs transition-all cursor-pointer shadow-sm"
-                title="Cloud Account & Synced Projects"
+                className="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-white/[0.08] hover:bg-slate-200 dark:hover:bg-white/[0.12] border border-slate-300 dark:border-white/[0.1] text-xs font-bold text-slate-900 dark:text-white transition-all cursor-pointer"
               >
-                {currentUser.user_metadata?.avatar_url ? (
-                  <img
-                    src={currentUser.user_metadata.avatar_url}
-                    alt="avatar"
-                    className="w-4 h-4 rounded-full shrink-0"
-                  />
-                ) : (
-                  <div className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 font-bold text-[10px] flex items-center justify-center shrink-0">
-                    {(currentUser.email?.[0] || 'U').toUpperCase()}
-                  </div>
-                )}
-                <span className="hidden sm:inline max-w-[90px] md:max-w-[120px] truncate text-[11px]">
-                  {currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0]}
-                </span>
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="max-w-[100px] truncate">{currentUser.email?.split('@')[0]}</span>
               </button>
             ) : (
               <button
                 onClick={onOpenAuth}
-                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-foreground text-background hover:opacity-90 font-semibold text-xs transition-all active:scale-95 cursor-pointer shadow-sm"
+                className="px-3.5 py-1.5 rounded-xl text-slate-700 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] text-xs font-bold transition-all cursor-pointer"
               >
-                <LogIn className="w-3.5 h-3.5" />
-                <span>Log in</span>
+                Log In
               </button>
             )}
 
-            {/* Studio Action Button */}
             <button
               onClick={onEnterStudio}
-              className="group flex items-center space-x-1.5 px-3 sm:px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs shadow-md shadow-amber-500/20 transition-all active:scale-95 cursor-pointer shrink-0"
+              className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-slate-900 dark:bg-amber-500 hover:bg-black dark:hover:bg-amber-400 text-white dark:text-black font-bold text-xs shadow-md shadow-slate-900/10 transition-all cursor-pointer active:scale-95"
             >
-              <span>{currentUser ? 'Studio Canvas' : 'Launch Studio'}</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-            </button>
-
-            {/* Theme Toggle Button */}
-            <button
-              onClick={onToggleTheme}
-              className="p-1.5 sm:p-2 rounded-xl bg-muted hover:bg-muted/80 border border-border text-foreground transition-all cursor-pointer shrink-0"
-              title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-            >
-              {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
+              <span>Launch Studio</span>
+              <ArrowRight className="w-3.5 h-3.5 text-amber-400 dark:text-black" />
             </button>
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative pt-12 sm:pt-20 md:pt-24 pb-12 sm:pb-16 px-4 sm:px-8 md:px-12 max-w-7xl mx-auto flex flex-col items-center text-center">
-        {/* Glow ambient background mesh */}
-        <div className="absolute top-6 left-1/2 -translate-x-1/2 w-full max-w-[650px] h-[300px] sm:h-[360px] bg-gradient-to-r from-amber-500/15 via-rose-500/10 to-orange-500/15 blur-[120px] rounded-full pointer-events-none" />
+      {/* HERO SECTION WITH DYNAMIC FLIPPING HEADLINE & FLOATING ICONS */}
+      <section className="relative pt-12 sm:pt-16 pb-16 px-4 sm:px-6 max-w-7xl mx-auto w-full flex flex-col items-center overflow-hidden">
+        
+        {/* Soft Radial Ambient Aura */}
+        <div className="absolute top-10 left-1/2 -translate-x-1/2 w-full max-w-[850px] h-[380px] bg-gradient-to-r from-amber-400/20 via-orange-300/15 to-emerald-400/15 dark:from-amber-500/10 dark:via-orange-500/10 dark:to-emerald-500/10 blur-[110px] rounded-full pointer-events-none" />
 
-        <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/25 text-amber-700 dark:text-amber-300 text-[11px] sm:text-xs font-semibold mb-6 sm:mb-8 shadow-sm max-w-full">
-          <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-          <span className="truncate sm:whitespace-normal">Next-Gen Systems Architecture &amp; Database CAD</span>
+        {/* =========================================================================
+            FLOATING ARCHITECTURE BADGES DRIFTING IN HERO
+            ========================================================================= */}
+        {/* Floating Chip 1: PostgreSQL Core (Top Left) */}
+        <div 
+          style={{ '--rot': '-5deg' } as React.CSSProperties}
+          className="hidden lg:flex items-center space-x-2.5 absolute top-12 left-2 xl:left-8 px-3.5 py-2 rounded-2xl bg-white/95 dark:bg-[#0f111a]/95 border border-slate-200/90 dark:border-white/[0.1] shadow-xl shadow-slate-200/50 dark:shadow-black/50 backdrop-blur-md animate-float-slow hover:rotate-0 hover:scale-105 transition-all cursor-pointer select-none z-10"
+        >
+          <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+            <Database className="w-4 h-4" />
+          </div>
+          <div className="text-left font-mono">
+            <div className="text-[11px] font-bold text-slate-900 dark:text-white leading-none">PostgreSQL 16</div>
+            <div className="text-[9px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">ACID • 3NF Engine</div>
+          </div>
         </div>
 
-        <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-foreground max-w-4xl font-sans leading-[1.14] sm:leading-[1.08]">
-          Visual system design for{' '}
-          <span className="bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 dark:from-white dark:via-amber-200 dark:to-orange-300 bg-clip-text text-transparent">
-            high-scale software.
-          </span>
+        {/* Floating Chip 2: Redis Cache (Top Right) */}
+        <div 
+          style={{ '--rot': '4deg' } as React.CSSProperties}
+          className="hidden lg:flex items-center space-x-2.5 absolute top-14 right-2 xl:right-8 px-3.5 py-2 rounded-2xl bg-white/95 dark:bg-[#0f111a]/95 border border-slate-200/90 dark:border-white/[0.1] shadow-xl shadow-slate-200/50 dark:shadow-black/50 backdrop-blur-md animate-float-reverse hover:rotate-0 hover:scale-105 transition-all cursor-pointer select-none z-10"
+        >
+          <div className="w-7 h-7 rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 flex items-center justify-center">
+            <Zap className="w-4 h-4" />
+          </div>
+          <div className="text-left font-mono">
+            <div className="text-[11px] font-bold text-slate-900 dark:text-white leading-none">Redis L2 Cache</div>
+            <div className="text-[9px] text-amber-600 dark:text-amber-400 font-semibold mt-0.5">&lt; 1.8ms Latency</div>
+          </div>
+        </div>
+
+        {/* Floating Chip 3: AI pgvector (Mid Left) */}
+        <div 
+          style={{ '--rot': '4deg' } as React.CSSProperties}
+          className="hidden xl:flex items-center space-x-2.5 absolute top-48 -left-4 px-3.5 py-2 rounded-2xl bg-white/95 dark:bg-[#0f111a]/95 border border-slate-200/90 dark:border-white/[0.1] shadow-xl shadow-slate-200/50 dark:shadow-black/50 backdrop-blur-md animate-float-reverse hover:rotate-0 hover:scale-105 transition-all cursor-pointer select-none z-10"
+        >
+          <div className="w-7 h-7 rounded-lg bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+            <Cpu className="w-4 h-4" />
+          </div>
+          <div className="text-left font-mono">
+            <div className="text-[11px] font-bold text-slate-900 dark:text-white leading-none">pgvector (1536d)</div>
+            <div className="text-[9px] text-purple-600 dark:text-purple-400 font-semibold mt-0.5">HNSW Cosine Operator</div>
+          </div>
+        </div>
+
+        {/* Floating Chip 4: Kafka Event Stream (Mid Right) */}
+        <div 
+          style={{ '--rot': '-4deg' } as React.CSSProperties}
+          className="hidden xl:flex items-center space-x-2.5 absolute top-48 -right-4 px-3.5 py-2 rounded-2xl bg-white/95 dark:bg-[#0f111a]/95 border border-slate-200/90 dark:border-white/[0.1] shadow-xl shadow-slate-200/50 dark:shadow-black/50 backdrop-blur-md animate-float-slow hover:rotate-0 hover:scale-105 transition-all cursor-pointer select-none z-10"
+        >
+          <div className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+            <GitBranch className="w-4 h-4" />
+          </div>
+          <div className="text-left font-mono">
+            <div className="text-[11px] font-bold text-slate-900 dark:text-white leading-none">Kafka Mesh</div>
+            <div className="text-[9px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">Partitioned Outbox</div>
+          </div>
+        </div>
+
+        {/* Announcement Tag */}
+        <div className="relative inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white dark:bg-[#11131e] border border-slate-200/90 dark:border-white/[0.1] text-slate-800 dark:text-zinc-200 text-xs font-semibold shadow-xs mb-6 hover:border-slate-300 dark:hover:border-white/[0.2] transition-all cursor-pointer">
+          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+          <span className="text-slate-900 dark:text-white font-bold">ArchSketch Studio 2.5</span>
+          <span className="text-slate-300 dark:text-zinc-600">|</span>
+          <span className="text-slate-600 dark:text-zinc-400">The Visual Architecture &amp; Database CAD</span>
+          <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
+        </div>
+
+        {/* DYNAMIC FLIPPING HEADLINE WITH ORBITRON HEAVY BOLD CREATIVE FONT */}
+        <h1 className="relative font-orbitron text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight text-slate-900 dark:text-white max-w-5xl text-center leading-[1.2] sm:leading-[1.15]">
+          Architect{' '}
+          <span 
+            key={phraseIndex}
+            className="inline-block animate-flip-in relative align-baseline mx-1"
+          >
+            <span className={`font-instrument italic font-normal text-3xl sm:text-5xl md:text-6xl lg:text-7xl ${currentPhrase.color} tracking-tight transition-colors`}>
+              {currentPhrase.text}
+            </span>
+          </span>{' '}
+          at the speed of thought.
         </h1>
 
-        <p className="mt-4 sm:mt-6 text-sm sm:text-base md:text-lg text-slate-600 dark:text-zinc-400 max-w-2xl leading-relaxed font-normal px-2">
-          Architect relational tables, microservices, caches, and event pipelines on an infinite hardware-accelerated canvas. Synthesize PostgreSQL DDL in one click.
+        {/* Refined Inspiring Tagline */}
+        <p className="relative mt-5 text-base sm:text-lg text-slate-600 dark:text-zinc-400 max-w-2xl text-center font-normal leading-relaxed">
+          From whiteboard ideas to production-grade database schemas in minutes. Model relational tables, microservices, caches, and event pipelines on an infinite collaborative canvas — with zero SQL drift.
         </p>
 
-        <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 w-full sm:w-auto px-4 sm:px-0">
+        {/* Action Buttons */}
+        <div className="relative mt-8 flex flex-col sm:flex-row items-center gap-3.5 w-full sm:w-auto z-20">
           <button
             onClick={onEnterStudio}
-            className="w-full sm:w-auto flex items-center justify-center space-x-2 px-6 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-sm shadow-xl shadow-amber-500/20 transition-all active:scale-95 cursor-pointer"
+            className="w-full sm:w-auto flex items-center justify-center space-x-2 px-7 py-3.5 rounded-xl bg-slate-900 dark:bg-amber-500 hover:bg-black dark:hover:bg-amber-400 text-white dark:text-black font-semibold text-sm shadow-lg shadow-slate-900/10 dark:shadow-amber-500/20 transition-all cursor-pointer active:scale-95"
           >
-            <Play className="w-4 h-4 fill-black" />
+            <Play className="w-4 h-4 fill-amber-400 dark:fill-black text-amber-400 dark:text-black" />
             <span>Open Studio Canvas</span>
+            <ArrowRight className="w-3.5 h-3.5 text-slate-400 dark:text-black" />
           </button>
 
-          <a
-            href="#interactive-sandbox"
-            className="w-full sm:w-auto flex items-center justify-center space-x-2 px-5 py-3 rounded-2xl bg-white dark:bg-zinc-900 hover:bg-slate-50 dark:hover:bg-zinc-800 text-slate-800 dark:text-zinc-100 border border-slate-200 dark:border-zinc-700/60 text-sm font-semibold transition-all shadow-sm active:scale-95"
+          {/* Quick CLI Copy Box */}
+          <div 
+            onClick={handleCopyCli}
+            className="w-full sm:w-auto flex items-center justify-between space-x-3 px-4 py-3.5 rounded-xl bg-white dark:bg-[#11131e] hover:bg-slate-50 dark:hover:bg-[#161827] border border-slate-200 dark:border-white/[0.1] text-xs font-mono text-slate-800 dark:text-zinc-200 transition-all cursor-pointer group shadow-xs"
+            title="Click to copy CLI command"
           >
-            <span>Explore Live Blueprint Demo</span>
-            <ArrowRight className="w-4 h-4 text-slate-500 dark:text-zinc-400" />
-          </a>
+            <div className="flex items-center space-x-2">
+              <Terminal className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              <span className="font-semibold">npx archsketch@latest init</span>
+            </div>
+            {copiedCli ? (
+              <span className="text-emerald-600 dark:text-emerald-400 text-[11px] font-bold flex items-center gap-1">
+                <Check className="w-3.5 h-3.5" /> Copied
+              </span>
+            ) : (
+              <Copy className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-700 dark:group-hover:text-white transition-colors" />
+            )}
+          </div>
         </div>
 
-        {/* Feature Pills */}
-       
-      </section>
-
-      {/* Interactive Architecture Sandbox */}
-      <section id="interactive-sandbox" className="py-10 sm:py-16 px-3 sm:px-8 md:px-12 max-w-7xl mx-auto w-full">
-        <div className="rounded-2xl border border-border bg-card/90 p-4 sm:p-7 shadow-2xl relative overflow-hidden backdrop-blur-md">
-          {/* Header & Preset Tabs */}
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between pb-5 sm:pb-6 border-b border-border gap-4 mb-6">
-            <div>
-              <div className="flex items-center space-x-2">
-                <span className="w-3 h-3 rounded-full bg-amber-500 inline-block shadow-sm shadow-amber-500/50"></span>
-                <span className="w-3 h-3 rounded-full bg-orange-500 inline-block shadow-sm shadow-orange-500/50"></span>
-                <span className="w-3 h-3 rounded-full bg-rose-500 inline-block shadow-sm shadow-rose-500/50"></span>
-                <h3 className="ml-2 text-sm font-bold text-foreground font-mono">Live Architecture Sandbox</h3>
+        {/* UPGRADED INTERACTIVE HERO CAD SANDBOX */}
+        <div id="interactive-canvas" className="relative mt-12 w-full rounded-2xl border border-slate-200/90 dark:border-white/[0.12] bg-white dark:bg-[#0c0d14] shadow-xl shadow-slate-200/50 dark:shadow-black/50 overflow-hidden z-20">
+          {/* Canvas Toolbar Header */}
+          <div className="px-4 py-3 bg-slate-50/90 dark:bg-[#10121c] border-b border-slate-200 dark:border-white/[0.08] flex flex-wrap items-center justify-between gap-3 select-none">
+            <div className="flex items-center space-x-3">
+              {/* Traffic Lights */}
+              <div className="flex items-center space-x-1.5">
+                <div className="w-3 h-3 rounded-full bg-[#ff5f56]" />
+                <div className="w-3 h-3 rounded-full bg-[#ffbd2e]" />
+                <div className="w-3 h-3 rounded-full bg-[#27c93f]" />
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {currentPreset.desc}
-              </p>
+
+              <div className="h-4 w-px bg-slate-200 dark:bg-white/[0.1]" />
+
+              <div className="flex items-center space-x-2 text-xs font-mono text-slate-800 dark:text-zinc-200 font-bold">
+                <Boxes className="w-4 h-4 text-amber-500" />
+                <span>INTERACTIVE ARCHITECTURE CAD</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold hidden sm:inline-flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  60 FPS ACTIVE
+                </span>
+              </div>
             </div>
 
-            {/* Blueprint Switcher Tabs */}
-            <div className="flex items-center bg-muted/90 p-1 rounded-xl border border-border text-xs font-mono w-full sm:w-auto overflow-x-auto no-scrollbar">
+            {/* Canvas Actions */}
+            <div className="flex items-center space-x-2">
               <button
-                onClick={() => setActivePreset('ecommerce')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap flex-1 sm:flex-initial text-center ${
-                  activePreset === 'ecommerce'
-                    ? 'bg-amber-500 text-black font-bold shadow'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
+                onClick={handleAddSampleNode}
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-white/[0.06] hover:bg-slate-100 dark:hover:bg-white/[0.12] text-slate-700 dark:text-zinc-300 border border-slate-200 dark:border-white/[0.1] text-xs font-bold font-mono cursor-pointer transition-all shadow-2xs"
               >
-                E-Commerce
+                <Plus className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>Add Node</span>
               </button>
+
               <button
-                onClick={() => setActivePreset('rideshare')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap flex-1 sm:flex-initial text-center ${
-                  activePreset === 'rideshare'
-                    ? 'bg-amber-500 text-black font-bold shadow'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
+                onClick={handleResetCanvas}
+                className="p-1.5 rounded-lg bg-white dark:bg-white/[0.06] hover:bg-slate-100 dark:hover:bg-white/[0.12] text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-white border border-slate-200 dark:border-white/[0.1] text-xs cursor-pointer transition-all shadow-2xs"
+                title="Reset Layout"
               >
-                Ride Dispatch
+                <RefreshCw className="w-3.5 h-3.5" />
               </button>
+
               <button
-                onClick={() => setActivePreset('social')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap flex-1 sm:flex-initial text-center ${
-                  activePreset === 'social'
-                    ? 'bg-amber-500 text-black font-bold shadow'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
+                onClick={onEnterStudio}
+                className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg bg-slate-900 dark:bg-amber-500 hover:bg-black dark:hover:bg-amber-400 text-white dark:text-black text-xs font-bold cursor-pointer transition-all ml-1 shadow-xs"
               >
-                Social Graph
+                <span>Full Studio</span>
+                <ArrowRight className="w-3 h-3" />
               </button>
             </div>
           </div>
 
-          {/* Architecture Visual Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5 mb-6 sm:mb-8">
-            {currentPreset.tables.map((tbl) => (
-              <div
-                key={tbl.name}
-                className={`bg-muted/40 border ${tbl.color} rounded-xl p-3.5 sm:p-4 shadow-md hover:scale-[1.01] transition-transform`}
-              >
-                <div className="flex items-center justify-between mb-3 pb-2 border-b border-border">
-                  <span className={`font-mono text-xs font-bold ${tbl.titleColor} truncate max-w-[170px]`}>{tbl.name}</span>
-                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-foreground/5 text-muted-foreground shrink-0">
-                    {tbl.badge}
-                  </span>
-                </div>
-                <div className="space-y-2 text-[11px] font-mono">
-                  {tbl.cols.map((col) => (
-                    <div key={col.name} className="flex justify-between items-center text-foreground gap-2">
-                      <span className="truncate">{col.name}</span>
-                      <span className="text-muted-foreground text-[10px] text-right shrink-0 truncate max-w-[130px]">{col.type}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
+          {/* Interactive SVG & Canvas Surface with Animated Pulse Wires */}
+          <div
+            ref={canvasContainerRef}
+            onMouseMove={handleMouseMoveCanvas}
+            onMouseUp={handleMouseUpCanvas}
+            className="relative w-full h-[430px] sm:h-[490px] bg-[#fbfcfd] dark:bg-[#090a10] overflow-hidden select-none cursor-default transition-colors"
+            style={{
+              backgroundImage: isDarkMode
+                ? `radial-gradient(rgba(255,255,255,0.12) 1px, transparent 1px)`
+                : `radial-gradient(#cbd5e1 1.25px, transparent 1.25px)`,
+              backgroundSize: '24px 24px',
+            }}
+          >
+            {/* SVG Animated Relation Pulse Wires */}
+            <svg className="absolute inset-0 w-full h-full pointer-events-none">
+              <defs>
+                <marker id="arrowhead" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                  <polygon points="0 0, 6 3, 0 6" fill={isDarkMode ? '#fbbf24' : '#d97706'} />
+                </marker>
+              </defs>
 
-          {/* Real IDE Code Editor Frame */}
-          <div className="bg-[#0b0c13] border border-border/80 dark:border-white/10 rounded-2xl overflow-hidden shadow-2xl relative font-mono text-xs text-zinc-100">
-            {/* IDE Header Bar / Window Title & Tab */}
-            <div className="bg-[#12131e] px-3 sm:px-4 py-2 sm:py-2.5 border-b border-white/[0.08] flex items-center justify-between select-none gap-2">
-              <div className="flex items-center space-x-2 sm:space-x-3 overflow-hidden">
-                {/* Traffic lights macOS dots */}
-                <div className="flex items-center space-x-1.5 shrink-0">
-                  <div className="w-2.5 sm:w-3 h-2.5 sm:h-3 rounded-full bg-rose-500/80 border border-rose-600/40" />
-                  <div className="w-2.5 sm:w-3 h-2.5 sm:h-3 rounded-full bg-amber-500/80 border border-amber-600/40" />
-                  <div className="w-2.5 sm:w-3 h-2.5 sm:h-3 rounded-full bg-emerald-500/80 border border-emerald-600/40" />
-                </div>
+              {INITIAL_HERO_EDGES.map((edge) => {
+                const sourceNode = nodes.find((n) => n.id === edge.from);
+                const targetNode = nodes.find((n) => n.id === edge.to);
+                if (!sourceNode || !targetNode) return null;
 
-                {/* Active Editor Tab */}
-                <div className="flex items-center space-x-1.5 sm:space-x-2 bg-[#090a10] px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-white/10 text-zinc-200 text-xs shadow-sm shrink-0">
-                  <Database className="w-3.5 h-3.5 text-sky-400" />
-                  <span className="font-semibold text-[11px] sm:text-[11.5px] text-zinc-100">schema.sql</span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse ml-0.5" title="Live Synced" />
-                </div>
+                const startX = sourceNode.x + 200;
+                const startY = sourceNode.y + 60;
+                const endX = targetNode.x + 10;
+                const endY = targetNode.y + 60;
 
-                <span className="hidden md:inline text-[11px] text-zinc-500 truncate">
-                  database &gt; public &gt; migrations &gt; init.sql
-                </span>
-              </div>
+                const deltaX = Math.abs(endX - startX) * 0.5;
+                const pathD = `M ${startX} ${startY} C ${startX + deltaX} ${startY}, ${endX - deltaX} ${endY}, ${endX} ${endY}`;
 
-              {/* Copy SQL Button */}
-              <div className="flex items-center space-x-2 shrink-0">
-                <span className="hidden sm:inline text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-white/5 text-zinc-400 border border-white/10">
-                  PostgreSQL 16
-                </span>
-                <button
-                  onClick={handleCopySql}
-                  className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg bg-zinc-800/80 hover:bg-zinc-700 text-zinc-200 hover:text-white border border-white/10 text-xs transition-all active:scale-95 cursor-pointer shadow-sm"
-                  title="Copy SQL to Clipboard"
+                return (
+                  <g key={edge.id}>
+                    {/* Background Guide Line */}
+                    <path
+                      d={pathD}
+                      fill="none"
+                      stroke={isDarkMode ? '#334155' : '#e2e8f0'}
+                      strokeWidth="2.5"
+                    />
+                    {/* Animated Pulse Overlay */}
+                    <path
+                      d={pathD}
+                      fill="none"
+                      stroke={isDarkMode ? '#fbbf24' : '#d97706'}
+                      strokeWidth="2"
+                      strokeDasharray="8 6"
+                      markerEnd="url(#arrowhead)"
+                      className="animate-wire-pulse"
+                    />
+                  </g>
+                );
+              })}
+            </svg>
+
+            {/* Draggable Architecture Table & Service Nodes */}
+            {nodes.map((node) => {
+              const isSelected = selectedNodeId === node.id;
+              return (
+                <div
+                  key={node.id}
+                  onMouseDown={(e) => handleMouseDownNode(e, node.id)}
+                  style={{ transform: `translate3d(${node.x}px, ${node.y}px, 0)` }}
+                  className={`absolute w-[210px] sm:w-[230px] rounded-xl border-2 bg-white/95 dark:bg-[#11131d]/95 backdrop-blur-md shadow-md transition-shadow cursor-grab active:cursor-grabbing select-none ${
+                    isSelected
+                      ? 'border-amber-500 shadow-xl shadow-amber-500/15 ring-2 ring-amber-500/30'
+                      : 'border-slate-200 dark:border-white/[0.1] hover:border-slate-400 dark:hover:border-white/[0.25]'
+                  }`}
                 >
-                  {copied ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-emerald-400" />
-                      <span className="text-emerald-400 font-medium text-[11px]">Copied!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5 text-zinc-400" />
-                      <span className="text-[11px]">Copy SQL</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
+                  {/* Connection Port Handle Left */}
+                  <div className="absolute -left-1.5 top-14 w-3 h-3 rounded-full bg-amber-500 border-2 border-white dark:border-[#11131d] shadow-xs" />
 
-            {/* Editor Code Body with Line Numbers Gutter & Syntax Highlighting */}
-            <div className="p-3 sm:p-5 overflow-x-auto bg-[#090a10] select-text">
-              <div className="table w-full">
-                {currentPreset.sql.split('\n').map((line, idx) => (
-                  <div key={idx} className="table-row leading-relaxed hover:bg-white/[0.02] transition-colors">
-                    {/* Line number gutter */}
-                    <span className="table-cell select-none text-right pr-3 sm:pr-4 text-zinc-600 font-mono text-[11px] sm:text-[11.5px] w-6 sm:w-8">
-                      {idx + 1}
-                    </span>
-                    {/* Code line with syntax highlighting */}
-                    <span className="table-cell pl-2 whitespace-pre font-mono text-[11.5px] sm:text-[12px]">
-                      {highlightSqlLine(line)}
+                  {/* Connection Port Handle Right */}
+                  <div className="absolute -right-1.5 top-14 w-3 h-3 rounded-full bg-amber-500 border-2 border-white dark:border-[#11131d] shadow-xs" />
+
+                  {/* Node Header */}
+                  <div className="px-3.5 py-2.5 border-b border-slate-100 dark:border-white/[0.08] flex items-center justify-between bg-slate-50/70 dark:bg-white/[0.02] rounded-t-lg">
+                    <div className="flex items-center space-x-2 truncate">
+                      <span 
+                        className="w-2.5 h-2.5 rounded-full shrink-0 shadow-xs" 
+                        style={{ backgroundColor: node.color }} 
+                      />
+                      <span className="font-mono text-xs font-bold text-slate-900 dark:text-white truncate">
+                        {node.name}
+                      </span>
+                    </div>
+                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-200/80 dark:bg-white/[0.08] text-slate-700 dark:text-zinc-300 font-bold shrink-0">
+                      {node.type.toUpperCase()}
                     </span>
                   </div>
-                ))}
-              </div>
-            </div>
 
-            {/* IDE Bottom Status Bar */}
-            <div className="bg-[#12131e] px-3 sm:px-4 py-1.5 border-t border-white/[0.08] flex items-center justify-between text-[10px] sm:text-[10.5px] text-zinc-400 font-mono select-none">
-              <div className="flex items-center space-x-2 sm:space-x-3">
-                <span className="flex items-center gap-1.5 text-emerald-400">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                  <span>DDL Validated</span>
-                </span>
-                <span className="hidden sm:inline text-zinc-600">|</span>
-                <span className="hidden sm:inline">UTF-8</span>
-                <span className="hidden sm:inline text-zinc-600">|</span>
-                <span className="hidden sm:inline">Spaces: 2</span>
+                  {/* Node Columns / Properties */}
+                  <div className="p-3 space-y-2 font-mono text-[11px]">
+                    {node.columns.map((col, i) => (
+                      <div key={i} className="flex items-center justify-between gap-1 text-slate-700 dark:text-zinc-300">
+                        <div className="flex items-center gap-1.5 truncate">
+                          {col.isPk && (
+                            <span className="text-[9px] font-black text-amber-800 dark:text-black bg-amber-200 dark:bg-amber-400 px-1 rounded">PK</span>
+                          )}
+                          {col.isFk && (
+                            <span className="text-[9px] font-black text-blue-800 dark:text-white bg-blue-100 dark:bg-blue-600 px-1 rounded">FK</span>
+                          )}
+                          <span className="truncate font-semibold">{col.name}</span>
+                        </div>
+                        <span className="text-slate-400 dark:text-zinc-500 text-[10px] shrink-0 font-medium">{col.type}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Node Footer Tag */}
+                  <div className="px-3 py-1.5 border-t border-slate-100 dark:border-white/[0.06] bg-slate-50/40 dark:bg-black/20 rounded-b-lg flex items-center justify-between text-[10px] font-mono text-slate-500 dark:text-zinc-400">
+                    <span className="truncate">{node.badge}</span>
+                    <Move className="w-2.5 h-2.5 text-slate-400 dark:text-zinc-600" />
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Interactive Inspector Sidebar Overlay */}
+            {selectedNode && (
+              <div className="absolute right-4 bottom-4 max-w-[280px] p-3.5 rounded-xl bg-white/95 dark:bg-[#0c0d14]/95 text-slate-900 dark:text-white border border-slate-200 dark:border-white/[0.1] shadow-xl backdrop-blur-md font-mono text-xs hidden sm:block">
+                <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100 dark:border-white/[0.08]">
+                  <span className="text-slate-500 dark:text-zinc-500 text-[10px] uppercase font-bold tracking-wider">Node Inspector</span>
+                  <span className="text-[11px] text-amber-600 dark:text-amber-400 font-bold">{selectedNode.name}</span>
+                </div>
+                <div className="text-[11px] text-slate-700 dark:text-zinc-300 space-y-1">
+                  <div>Type: <span className="font-semibold text-slate-900 dark:text-white">{selectedNode.type}</span></div>
+                  <div>Schema Fields: <span className="font-semibold text-slate-900 dark:text-white">{selectedNode.columns.length} columns</span></div>
+                  <div>Coordinates: <span className="text-slate-500 dark:text-zinc-500">x:{Math.round(selectedNode.x)}, y:{Math.round(selectedNode.y)}</span></div>
+                </div>
               </div>
-              <div className="flex items-center space-x-2 sm:space-x-3 text-zinc-400">
-                <span>Ln {currentPreset.sql.split('\n').length}, Col 1</span>
-                <span className="hidden sm:inline text-zinc-600">|</span>
-                <span className="text-sky-400 font-medium">PostgreSQL Dialect</span>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </section>
 
-      {/* Feature Capabilities Grid */}
-      <section id="features" className="py-12 sm:py-20 px-4 sm:px-8 md:px-12 max-w-7xl mx-auto border-t border-border">
-        <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-16">
-          <span className="text-xs font-mono text-amber-600 dark:text-amber-400 uppercase tracking-widest font-bold block mb-2">
-            Architecture Tooling
-          </span>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-foreground font-sans">
-            Everything your engineering team needs.
+      {/* CORE FEATURE: ARCHITECTURE PROFILER & LINTER WORKBENCH */}
+      <section id="profiler" className="py-16 sm:py-20 px-4 sm:px-6 max-w-7xl mx-auto w-full border-t border-slate-200 dark:border-white/[0.08]">
+        {/* Section Header */}
+        <div className="text-center max-w-3xl mx-auto mb-10">
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs font-mono font-bold uppercase tracking-wider mb-3">
+            <Shield className="w-3.5 h-3.5" />
+            <span>Automated Architecture Linter</span>
+          </div>
+          <h2 className="font-orbitron text-2xl sm:text-4xl lg:text-5xl font-black text-slate-900 dark:text-white tracking-tight flex items-center justify-center gap-2.5 sm:gap-3.5 flex-wrap">
+            <Shield className="w-6 h-6 sm:w-8 sm:h-8 text-amber-500 shrink-0 stroke-[2.25]" />
+            <span>Lint schemas.</span>
+            <span className="font-instrument italic font-normal text-amber-600 dark:text-amber-400">
+              Prevent latency regressions.
+            </span>
           </h2>
-          <p className="mt-2 sm:mt-3 text-xs sm:text-sm text-slate-600 dark:text-muted-foreground">
-            From zero-friction database schema design to complex distributed event mesh topologies.
+          <p className="mt-3 text-sm text-slate-600 dark:text-zinc-400 font-medium leading-relaxed">
+            ArchSketch evaluates foreign key cascades, normalization rules, and index selectivity before you write a single line of application code.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-8">
-          <div className="p-5 sm:p-6 rounded-2xl bg-card border border-border hover:border-amber-500/40 transition-colors shadow-sm">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-4">
-              <Database className="w-5 h-5" />
+        {/* Category Profile Selector Tabs */}
+        <div className="flex items-center justify-start sm:justify-center gap-2 mb-8 overflow-x-auto pb-2 no-scrollbar">
+          {Object.values(CATEGORY_PROFILES).map((prof) => {
+            const isSelected = activeCategory === prof.id;
+            return (
+              <button
+                key={prof.id}
+                onClick={() => setActiveCategory(prof.id)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer border ${
+                  isSelected
+                    ? 'bg-slate-900 dark:bg-amber-500 text-white dark:text-black border-slate-900 dark:border-amber-500 shadow-md shadow-slate-900/10 dark:shadow-amber-500/20'
+                    : 'bg-white dark:bg-[#0f111a] text-slate-700 dark:text-zinc-300 hover:text-black dark:hover:text-white border-slate-200 dark:border-white/[0.08] hover:border-slate-400'
+                }`}
+              >
+                <span>{prof.label}</span>
+                <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-bold ${
+                  isSelected ? 'bg-white/20 dark:bg-black/20 text-white dark:text-black' : 'bg-slate-100 dark:bg-white/[0.08] text-slate-600 dark:text-zinc-400'
+                }`}>
+                  {prof.metrics.healthScore}%
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Workbench Card: Seamless Dark/Light Studio */}
+        <div className="rounded-2xl border border-slate-200/90 dark:border-white/[0.1] bg-white dark:bg-[#0c0d14] shadow-xl shadow-slate-200/50 dark:shadow-black/50 overflow-hidden">
+          {/* Top Diagnostics & Metrics Panel */}
+          <div className="p-6 sm:p-8 border-b border-slate-200 dark:border-white/[0.08] bg-slate-50/60 dark:bg-[#0f111a]/70">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+              <div>
+                <span className="text-[11px] font-mono uppercase tracking-wider text-amber-700 dark:text-amber-400 font-bold">
+                  {currentProfile.category}
+                </span>
+                <h3 className="font-orbitron text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mt-1">
+                  {currentProfile.label} Architecture Profile
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-zinc-400 mt-1 max-w-2xl font-medium leading-relaxed">
+                  {currentProfile.description}
+                </p>
+              </div>
+
+              {/* Health Score Box */}
+              <div className="flex items-center gap-3.5 bg-white dark:bg-black/40 border border-slate-200 dark:border-white/[0.08] rounded-xl p-3.5 px-5 shrink-0 self-start lg:self-center shadow-xs">
+                <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400 flex flex-col items-center justify-center font-mono font-black">
+                  <span className="text-base font-black leading-none">{currentProfile.metrics.healthScore}</span>
+                  <span className="text-[8px] font-bold mt-0.5">SCORE</span>
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <span>Verified Stable</span>
+                    <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div className="text-[11px] text-slate-500 dark:text-zinc-400 mt-0.5 font-mono">
+                    Est. Latency: <strong className="text-slate-900 dark:text-amber-400">{currentProfile.metrics.estLatency}</strong>
+                  </div>
+                </div>
+              </div>
             </div>
-            <h3 className="text-base font-bold text-foreground mb-2">Relational Modeling</h3>
-            <p className="text-xs text-slate-600 dark:text-muted-foreground leading-relaxed">
-              Design tables with primary keys, foreign keys, and indexes. Visual relation handles draw animated connection lines between parent and child tables.
-            </p>
+
+            {/* Profile KPI Matrix */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
+              <div className="p-3.5 rounded-xl bg-white dark:bg-black/30 border border-slate-200 dark:border-white/[0.06] shadow-2xs">
+                <div className="text-[10px] font-mono uppercase text-slate-500 dark:text-zinc-500 font-bold">Normalization</div>
+                <div className="text-xs font-black text-slate-900 dark:text-white mt-0.5 truncate">{currentProfile.metrics.normalization}</div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-white dark:bg-black/30 border border-slate-200 dark:border-white/[0.06] shadow-2xs">
+                <div className="text-[10px] font-mono uppercase text-slate-500 dark:text-zinc-500 font-bold">Index Coverage</div>
+                <div className="text-xs font-black text-emerald-700 dark:text-emerald-400 mt-0.5 truncate">{currentProfile.metrics.indexCoverage}</div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-white dark:bg-black/30 border border-slate-200 dark:border-white/[0.06] shadow-2xs">
+                <div className="text-[10px] font-mono uppercase text-slate-500 dark:text-zinc-500 font-bold">Deadlock Risk</div>
+                <div className="text-xs font-black text-emerald-700 dark:text-emerald-400 mt-0.5 truncate">{currentProfile.metrics.deadlockRisk}</div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-white dark:bg-black/30 border border-slate-200 dark:border-white/[0.06] shadow-2xs">
+                <div className="text-[10px] font-mono uppercase text-slate-500 dark:text-zinc-500 font-bold">Peak Capacity</div>
+                <div className="text-xs font-black text-slate-900 dark:text-white mt-0.5 truncate font-mono">{currentProfile.metrics.throughput}</div>
+              </div>
+            </div>
+
+            {/* Automated Linter Diagnostic Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 mt-4">
+              {currentProfile.linterRules.map((rule, idx) => (
+                <div 
+                  key={idx}
+                  className="p-3.5 rounded-xl bg-white dark:bg-black/20 border border-slate-200 dark:border-white/[0.06] text-xs shadow-2xs"
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="font-mono text-[10px] text-amber-700 dark:text-amber-400 font-bold">{rule.code}</span>
+                    <span className={`text-[9px] font-mono px-2 py-0.5 rounded font-bold uppercase ${
+                      rule.status === 'pass'
+                        ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20'
+                        : 'bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20'
+                    }`}>
+                      {rule.status}
+                    </span>
+                  </div>
+                  <div className="font-bold text-slate-900 dark:text-zinc-200 text-[11.5px]">{rule.title}</div>
+                  <div className="text-[11px] text-slate-600 dark:text-zinc-400 mt-1 leading-relaxed font-medium">{rule.description}</div>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div className="p-5 sm:p-6 rounded-2xl bg-card border border-border hover:border-orange-500/40 transition-colors shadow-sm">
-            <div className="w-10 h-10 rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-400 flex items-center justify-center mb-4">
-              <Server className="w-5 h-5" />
-            </div>
-            <h3 className="text-base font-bold text-foreground mb-2">Microservice Topologies</h3>
-            <p className="text-xs text-slate-600 dark:text-muted-foreground leading-relaxed">
-              Place API gateways, Redis caches, Kafka producers, and background workers directly into your architectural layout.
-            </p>
-          </div>
+          {/* Embedded High-Contrast Dark IDE Terminal */}
+          <div className="bg-[#090a10] font-mono text-xs text-zinc-200">
+            {/* IDE Tab Header */}
+            <div className="px-4 py-3 bg-[#11131e] border-b border-white/[0.08] flex items-center justify-between flex-wrap gap-2 select-none">
+              <div className="flex items-center space-x-1.5">
+                <button
+                  onClick={() => setActiveCodeTab('sql')}
+                  className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all ${
+                    activeCodeTab === 'sql'
+                      ? 'bg-amber-400 text-black shadow-xs'
+                      : 'text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  <Database className="w-3.5 h-3.5" />
+                  <span>PostgreSQL 16 DDL</span>
+                </button>
 
-          <div className="p-5 sm:p-6 rounded-2xl bg-card border border-border hover:border-amber-500/40 transition-colors shadow-sm">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-4">
-              <Zap className="w-5 h-5" />
+                <button
+                  onClick={() => setActiveCodeTab('prisma')}
+                  className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all ${
+                    activeCodeTab === 'prisma'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  <Code2 className="w-3.5 h-3.5" />
+                  <span>Prisma Schema</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveCodeTab('supabase')}
+                  className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all ${
+                    activeCodeTab === 'supabase'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  <Zap className="w-3.5 h-3.5" />
+                  <span>Supabase Migration</span>
+                </button>
+              </div>
+
+              {/* Copy Code Button */}
+              <button
+                onClick={handleCopyCode}
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white border border-white/[0.1] text-xs cursor-pointer transition-all active:scale-95"
+              >
+                {copiedCode ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="text-emerald-400 font-bold">Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5 text-zinc-400" />
+                    <span>Copy Code</span>
+                  </>
+                )}
+              </button>
             </div>
-            <h3 className="text-base font-bold text-foreground mb-2">Real-Time Cloud Sync</h3>
-            <p className="text-xs text-slate-600 dark:text-muted-foreground leading-relaxed">
-              Auto-save and synchronize your architectural workspaces, database models, and team blueprints securely across all your devices with instant persistence.
-            </p>
+
+            {/* Code Output Body */}
+            <div className="p-4 sm:p-6 overflow-x-auto select-text bg-[#07080d]">
+              <pre className="text-[12px] leading-relaxed text-zinc-300 font-mono">
+                {activeCodeTab === 'sql' && currentProfile.sql}
+                {activeCodeTab === 'prisma' && currentProfile.prisma}
+                {activeCodeTab === 'supabase' && currentProfile.supabaseMigration}
+              </pre>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Anchor for the footer & interactive stretch lamp */}
+      {/* ARCHITECTURAL DOMAINS GRID ("Every category of architecture") */}
+      <section id="categories" className="py-16 sm:py-20 px-4 sm:px-6 max-w-7xl mx-auto w-full border-t border-slate-200 dark:border-white/[0.08]">
+        <div className="text-center max-w-2xl mx-auto mb-12">
+          <span className="text-xs font-mono text-slate-900 dark:text-amber-400 uppercase tracking-widest font-bold block mb-2">
+            Coverage Scope
+          </span>
+          <h2 className="font-orbitron text-2xl sm:text-4xl lg:text-5xl font-black text-slate-900 dark:text-white tracking-tight flex items-center justify-center gap-2.5 sm:gap-3.5 flex-wrap">
+            <Boxes className="w-6 h-6 sm:w-8 sm:h-8 text-amber-500 shrink-0 stroke-[2.25]" />
+            <span>Every category of</span>
+            <span className="font-instrument italic font-normal text-amber-600 dark:text-amber-400">
+              software architecture.
+            </span>
+          </h2>
+          <p className="mt-2.5 text-sm text-slate-600 dark:text-zinc-400 font-medium">
+            From relational schemas to event streams, Redis memory pools, and vector search.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Card 1: Relational ERD */}
+          <div className="p-6 rounded-2xl bg-white dark:bg-[#0f111a] border border-slate-200 dark:border-white/[0.08] hover:border-slate-400 dark:hover:border-amber-500/40 transition-all shadow-xs hover:shadow-md flex flex-col justify-between group">
+            <div>
+              <div className="w-11 h-11 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-amber-700 dark:text-amber-400 flex items-center justify-center mb-4 font-bold shadow-xs group-hover:scale-105 transition-transform">
+                <Database className="w-5 h-5" />
+              </div>
+              <h3 className="font-bricolage text-base font-bold text-slate-900 dark:text-white mb-2 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                Relational Database ERD
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-zinc-400 font-medium leading-relaxed">
+                Design primary keys, foreign keys, cascade rules, and compound B-Tree indexes on an infinite hardware-accelerated canvas.
+              </p>
+            </div>
+            <div className="mt-5 pt-3.5 border-t border-slate-100 dark:border-white/[0.06] flex items-center justify-between text-[11px] font-mono text-slate-500 dark:text-zinc-500 font-bold">
+              <span>PostgreSQL • MySQL • Supabase</span>
+              <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors" />
+            </div>
+          </div>
+
+          {/* Card 2: Microservices */}
+          <div className="p-6 rounded-2xl bg-white dark:bg-[#0f111a] border border-slate-200 dark:border-white/[0.08] hover:border-slate-400 dark:hover:border-blue-500/40 transition-all shadow-xs hover:shadow-md flex flex-col justify-between group">
+            <div>
+              <div className="w-11 h-11 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 text-blue-700 dark:text-blue-400 flex items-center justify-center mb-4 font-bold shadow-xs group-hover:scale-105 transition-transform">
+                <Server className="w-5 h-5" />
+              </div>
+              <h3 className="font-bricolage text-base font-bold text-slate-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                Microservice Topologies
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-zinc-400 font-medium leading-relaxed">
+                Model API gateways, worker pools, gRPC endpoints, and service boundaries with bidirectional relation wires.
+              </p>
+            </div>
+            <div className="mt-5 pt-3.5 border-t border-slate-100 dark:border-white/[0.06] flex items-center justify-between text-[11px] font-mono text-slate-500 dark:text-zinc-500 font-bold">
+              <span>gRPC • REST • GraphQL • Docker</span>
+              <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors" />
+            </div>
+          </div>
+
+          {/* Card 3: AI Vector RAG */}
+          <div className="p-6 rounded-2xl bg-white dark:bg-[#0f111a] border border-slate-200 dark:border-white/[0.08] hover:border-slate-400 dark:hover:border-purple-500/40 transition-all shadow-xs hover:shadow-md flex flex-col justify-between group">
+            <div>
+              <div className="w-11 h-11 rounded-xl bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/20 text-purple-700 dark:text-purple-400 flex items-center justify-center mb-4 font-bold shadow-xs group-hover:scale-105 transition-transform">
+                <Cpu className="w-5 h-5" />
+              </div>
+              <h3 className="font-bricolage text-base font-bold text-slate-900 dark:text-white mb-2 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                AI Vector Pipelines
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-zinc-400 font-medium leading-relaxed">
+                Design pgvector embedding tables, HNSW distance operators, semantic response caches, and LLM context buffers.
+              </p>
+            </div>
+            <div className="mt-5 pt-3.5 border-t border-slate-100 dark:border-white/[0.06] flex items-center justify-between text-[11px] font-mono text-slate-500 dark:text-zinc-500 font-bold">
+              <span>pgvector • HNSW • RAG • Redis</span>
+              <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors" />
+            </div>
+          </div>
+
+          {/* Card 4: In-Memory Caches */}
+          <div className="p-6 rounded-2xl bg-white dark:bg-[#0f111a] border border-slate-200 dark:border-white/[0.08] hover:border-slate-400 dark:hover:border-rose-500/40 transition-all shadow-xs hover:shadow-md flex flex-col justify-between group">
+            <div>
+              <div className="w-11 h-11 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 text-rose-700 dark:text-rose-400 flex items-center justify-center mb-4 font-bold shadow-xs group-hover:scale-105 transition-transform">
+                <Zap className="w-5 h-5" />
+              </div>
+              <h3 className="font-bricolage text-base font-bold text-slate-900 dark:text-white mb-2 group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors">
+                In-Memory Cache Layers
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-zinc-400 font-medium leading-relaxed">
+                Model Redis session stores, sliding-window rate limiters, hashes, and sorted sets with real port definitions.
+              </p>
+            </div>
+            <div className="mt-5 pt-3.5 border-t border-slate-100 dark:border-white/[0.06] flex items-center justify-between text-[11px] font-mono text-slate-500 dark:text-zinc-500 font-bold">
+              <span>Redis 7 • Memcached • DragonFly</span>
+              <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors" />
+            </div>
+          </div>
+
+          {/* Card 5: Event Streams */}
+          <div className="p-6 rounded-2xl bg-white dark:bg-[#0f111a] border border-slate-200 dark:border-white/[0.08] hover:border-slate-400 dark:hover:border-emerald-500/40 transition-all shadow-xs hover:shadow-md flex flex-col justify-between group">
+            <div>
+              <div className="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400 flex items-center justify-center mb-4 font-bold shadow-xs group-hover:scale-105 transition-transform">
+                <GitBranch className="w-5 h-5" />
+              </div>
+              <h3 className="font-bricolage text-base font-bold text-slate-900 dark:text-white mb-2 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                Event Streaming &amp; Queues
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-zinc-400 font-medium leading-relaxed">
+                Map Kafka partition keys, RabbitMQ exchanges, BullMQ worker pools, and transactional outbox patterns.
+              </p>
+            </div>
+            <div className="mt-5 pt-3.5 border-t border-slate-100 dark:border-white/[0.06] flex items-center justify-between text-[11px] font-mono text-slate-500 dark:text-zinc-500 font-bold">
+              <span>Apache Kafka • RabbitMQ • BullMQ</span>
+              <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors" />
+            </div>
+          </div>
+
+          {/* Card 6: Enterprise RLS & Security */}
+          <div className="p-6 rounded-2xl bg-white dark:bg-[#0f111a] border border-slate-200 dark:border-white/[0.08] hover:border-slate-400 dark:hover:border-amber-500/40 transition-all shadow-xs hover:shadow-md flex flex-col justify-between group">
+            <div>
+              <div className="w-11 h-11 rounded-xl bg-slate-900 dark:bg-white/[0.08] text-white flex items-center justify-center mb-4 font-bold shadow-xs group-hover:scale-105 transition-transform">
+                <Shield className="w-5 h-5 text-amber-400" />
+              </div>
+              <h3 className="font-bricolage text-base font-bold text-slate-900 dark:text-white mb-2 group-hover:text-amber-700 dark:group-hover:text-amber-400 transition-colors">
+                Row-Level Security &amp; Auth
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-zinc-400 font-medium leading-relaxed">
+                Configure PostgreSQL Row-Level Security (RLS) policies, multi-tenant boundaries, and SOC-2 audit sink tables.
+              </p>
+            </div>
+            <div className="mt-5 pt-3.5 border-t border-slate-100 dark:border-white/[0.06] flex items-center justify-between text-[11px] font-mono text-slate-500 dark:text-zinc-500 font-bold">
+              <span>Supabase RLS • OAuth2 • SOC-2</span>
+              <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* BENCHMARK COMPARISON */}
+      <section id="comparison" className="py-16 sm:py-20 px-4 sm:px-6 max-w-7xl mx-auto w-full border-t border-slate-200 dark:border-white/[0.08]">
+        <div className="text-center max-w-2xl mx-auto mb-10">
+          <span className="text-xs font-mono text-slate-900 dark:text-amber-400 uppercase tracking-widest font-bold block mb-2">
+            Technical Precision
+          </span>
+          <h2 className="font-orbitron text-2xl sm:text-4xl lg:text-5xl font-black text-slate-900 dark:text-white tracking-tight flex items-center justify-center gap-2.5 sm:gap-3.5 flex-wrap">
+            <Activity className="w-6 h-6 sm:w-8 sm:h-8 text-amber-500 shrink-0 stroke-[2.25]" />
+            <span>Built for architects,</span>
+            <span className="font-instrument italic font-normal text-amber-600 dark:text-amber-400">
+              not doodle sketches.
+            </span>
+          </h2>
+        </div>
+
+        <div className="overflow-x-auto rounded-2xl border border-slate-200/90 dark:border-white/[0.1] bg-white dark:bg-[#0c0d14] shadow-sm">
+          <table className="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr className="border-b border-slate-200 dark:border-white/[0.08] bg-slate-50/70 dark:bg-white/[0.02]">
+                <th className="p-4 sm:p-5 font-bold text-slate-900 dark:text-white">Capability</th>
+                <th className="p-4 sm:p-5 font-bold text-amber-700 dark:text-amber-400 bg-amber-50/60 dark:bg-amber-400/10">ArchSketch v2.5</th>
+                <th className="p-4 sm:p-5 font-semibold text-slate-500 dark:text-zinc-500">Generic Whiteboards</th>
+                <th className="p-4 sm:p-5 font-semibold text-slate-500 dark:text-zinc-500">Legacy DB Admin GUIs</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-white/[0.06] text-slate-700 dark:text-zinc-300">
+              <tr>
+                <td className="p-4 sm:p-5 font-medium text-slate-900 dark:text-white">Relational Foreign Key Semantics</td>
+                <td className="p-4 sm:p-5 font-bold text-emerald-700 dark:text-emerald-400 bg-amber-50/20 dark:bg-amber-400/5">✓ Strict &amp; Type-Checked</td>
+                <td className="p-4 sm:p-5 text-slate-400 dark:text-zinc-600">✕ Generic line drawings</td>
+                <td className="p-4 sm:p-5 text-slate-500 dark:text-zinc-500">⚠️ Clunky modal forms</td>
+              </tr>
+              <tr>
+                <td className="p-4 sm:p-5 font-medium text-slate-900 dark:text-white">1-Click PostgreSQL DDL Synthesis</td>
+                <td className="p-4 sm:p-5 font-bold text-emerald-700 dark:text-emerald-400 bg-amber-50/20 dark:bg-amber-400/5">✓ Instant Code Generation</td>
+                <td className="p-4 sm:p-5 text-slate-400 dark:text-zinc-600">✕ None</td>
+                <td className="p-4 sm:p-5 text-slate-500 dark:text-zinc-500">⚠️ Manual SQL dumps</td>
+              </tr>
+              <tr>
+                <td className="p-4 sm:p-5 font-medium text-slate-900 dark:text-white">Microservices, Redis &amp; Kafka Nodes</td>
+                <td className="p-4 sm:p-5 font-bold text-emerald-700 dark:text-emerald-400 bg-amber-50/20 dark:bg-amber-400/5">✓ First-Class Citizens</td>
+                <td className="p-4 sm:p-5 text-slate-500 dark:text-zinc-500">⚠️ Static icons only</td>
+                <td className="p-4 sm:p-5 text-slate-400 dark:text-zinc-600">✕ Tables only</td>
+              </tr>
+              <tr>
+                <td className="p-4 sm:p-5 font-medium text-slate-900 dark:text-white">Cloud Sync &amp; Supabase Integration</td>
+                <td className="p-4 sm:p-5 font-bold text-emerald-700 dark:text-emerald-400 bg-amber-50/20 dark:bg-amber-400/5">✓ Real-time Sync</td>
+                <td className="p-4 sm:p-5 text-slate-500 dark:text-zinc-500">⚠️ Proprietary cloud</td>
+                <td className="p-4 sm:p-5 text-slate-400 dark:text-zinc-600">✕ Local desktop lock-in</td>
+              </tr>
+              <tr>
+                <td className="p-4 sm:p-5 font-medium text-slate-900 dark:text-white">Automated Schema Linter &amp; Profiler</td>
+                <td className="p-4 sm:p-5 font-bold text-emerald-700 dark:text-emerald-400 bg-amber-50/20 dark:bg-amber-400/5">✓ 3NF &amp; Index Analysis</td>
+                <td className="p-4 sm:p-5 text-slate-400 dark:text-zinc-600">✕ None</td>
+                <td className="p-4 sm:p-5 text-slate-500 dark:text-zinc-500">⚠️ Requires running server</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* FINAL LAUNCH CTA BANNER */}
+      <section className="py-16 sm:py-20 px-4 sm:px-6 max-w-7xl mx-auto w-full">
+        <div className="rounded-3xl bg-slate-900 dark:bg-[#0c0d14] border border-slate-800 dark:border-white/[0.12] p-8 sm:p-14 text-center shadow-xl relative overflow-hidden text-white">
+          <div className="max-w-2xl mx-auto">
+            <h3 className="font-orbitron text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight flex items-center justify-center gap-2.5 sm:gap-3.5 flex-wrap text-white">
+              <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 text-amber-400 shrink-0 stroke-[2.25]" />
+              <span>Start designing your</span>
+              <span className="font-instrument italic font-normal text-amber-400">
+                system architecture now.
+              </span>
+            </h3>
+            <p className="mt-3 text-sm text-slate-300 dark:text-zinc-400 font-normal leading-relaxed">
+              Zero configuration required. Run locally or sync across machines with Supabase.
+            </p>
+
+            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3.5">
+              <button
+                onClick={onEnterStudio}
+                className="w-full sm:w-auto flex items-center justify-center space-x-2 px-7 py-3.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm shadow-xl shadow-amber-500/20 transition-all cursor-pointer active:scale-95"
+              >
+                <Play className="w-4 h-4 fill-slate-950 text-slate-950" />
+                <span>Launch Studio Canvas</span>
+              </button>
+
+              <button
+                onClick={onOpenAuth}
+                className="w-full sm:w-auto flex items-center justify-center space-x-2 px-6 py-3.5 rounded-xl bg-white/10 hover:bg-white/15 text-white border border-white/15 text-xs font-semibold transition-all cursor-pointer"
+              >
+                <LogIn className="w-4 h-4" />
+                <span>Sign In for Cloud Sync</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Anchor for footer */}
       <div id="footer-lamp" />
 
-      {/* The Warm Cinematic Editorial Footer with Stretchable Hanging Lamp & Real-time Shadows */}
+      {/* KEPT EXACTLY AS IT IS: The Iconic Stretchable Hanging Lamp Footer */}
       <Footer
         brandName="ArchSketch"
-        tagline="The high-velocity CAD system for systems architects, relational data modeling, and distributed microservices."
+        tagline="The architectural CAD system for distributed databases, relational schemas, and microservice topologies."
         onBrandClick={() => {
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
@@ -607,4 +1513,3 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 };
 
 export default LandingPage;
-

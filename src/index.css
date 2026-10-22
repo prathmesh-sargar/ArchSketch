@@ -95,3 +95,79 @@ button:hover svg,
 [role="button"]:hover svg {
   transform: scale(1.08);
 }
+
+/* Floating Icon Micro-Animations for Hero Section */
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0px) rotate(var(--rot, 0deg)); }
+  50% { transform: translateY(-10px) rotate(calc(var(--rot, 0deg) + 1.5deg)); }
+}
+
+@keyframes float-reverse {
+  0%, 100% { transform: translateY(0px) rotate(var(--rot, 0deg)); }
+  50% { transform: translateY(12px) rotate(calc(var(--rot, 0deg) - 1.5deg)); }
+}
+
+.animate-float-slow {
+  animation: float-slow 5s ease-in-out infinite;
+}
+
+.animate-float-reverse {
+  animation: float-reverse 6.5s ease-in-out infinite;
+}
+
+.font-syne {
+  font-family: 'Syne', sans-serif;
+}
+
+.font-space {
+  font-family: 'Space Grotesk', -apple-system, sans-serif;
+}
+
+.font-outfit {
+  font-family: 'Outfit', sans-serif;
+}
+
+.font-cinzel {
+  font-family: 'Cinzel', serif;
+}
+
+.font-instrument {
+  font-family: 'Instrument Serif', Georgia, serif;
+}
+
+.font-orbitron {
+  font-family: 'Orbitron', -apple-system, sans-serif;
+}
+
+.font-bricolage {
+  font-family: 'Bricolage Grotesque', sans-serif;
+}
+
+.font-code,
+.font-mono {
+  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+@keyframes wire-pulse {
+  from { stroke-dashoffset: 28; }
+  to { stroke-dashoffset: 0; }
+}
+
+.animate-wire-pulse {
+  animation: wire-pulse 1.4s linear infinite;
+}
+
+@keyframes text-flip-in {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-flip-in {
+  animation: text-flip-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
